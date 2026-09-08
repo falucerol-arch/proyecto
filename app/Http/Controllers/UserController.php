@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class UserController extends Controller
 {
@@ -13,9 +13,9 @@ class UserController extends Controller
         // Traemos todos los usuarios y sus relaciones
         $users = User::with(['company', 'department'])->get();
 
-        // Renderizamos el componente de React y le pasamos los datos
+        // Renderizamos el componente React y le pasamos los datos
         return Inertia::render('Users/Index', [
-            'users' => $users
+            'users' => $users,
         ]);
     }
 }

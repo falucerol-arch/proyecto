@@ -42,4 +42,20 @@ class CompanyController extends Controller
 
         return redirect()->route('companies.index');
     }
+        public function destroy(Company $company): RedirectResponse
+{
+    // No permitir eliminar si tiene usuarios asociados
+    if ($company->users()->exists()) {
+        return redirect()
+            ->route('companies.index')
+            ->withErrors([
+                'company' => 'No se puede eliminar la empresa porque tiene usuarios asociados.',
+            ]);
+    }
+
+    $company->delete();
+
+    return redirect()->route('companies.index');
+}
+
 }

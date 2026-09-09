@@ -1,8 +1,19 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 import AppSidebar from '@/components/AppSidebar';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 import {
     Dialog,
@@ -51,6 +62,8 @@ export default function Index({ companies }: Props) {
     // false = información
     // true = editar
     const [isEditing, setIsEditing] = useState(false);
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
 
     // =========================================
@@ -119,6 +132,30 @@ export default function Index({ companies }: Props) {
         setIsEditing(false);
         editForm.clearErrors();
     };
+
+
+    const requestDelete = () => {
+    if (!selectedCompany) return;
+
+    setShowDeleteConfirm(true);
+};
+
+const confirmDelete = () => {
+    if (!selectedCompany) return;
+
+    // Seguridad también desde React
+    if (selectedCompany.users_count > 0) return;
+
+    router.delete(`/empresas/${selectedCompany.id}`, {
+        preserveScroll: true,
+
+        onSuccess: () => {
+            setShowDeleteConfirm(false);
+            setSelectedCompany(null);
+            setIsEditing(false);
+        },
+    });
+};
 
 
     // =========================================
@@ -435,6 +472,80 @@ export default function Index({ companies }: Props) {
 
                         </DialogHeader>
 
+                        <AlertDialog
+    open={showDeleteConfirm}
+    onOpenChange={setShowDeleteConfirm}
+>
+    <AlertDialogContent>
+
+        {selectedCompany && selectedCompany.users_count > 0 ? (
+            <>
+                <AlertDialogHeader>
+
+                    <AlertDialogTitle>
+                        No se puede eliminar
+                    </AlertDialogTitle>
+
+                    <AlertDialogDescription>
+                        La empresa{' '}
+                        <strong>
+                            {selectedCompany.name}
+                        </strong>{' '}
+                        tiene {selectedCompany.users_count}{' '}
+                        usuario(s) asociado(s).
+
+                        Debes cambiar o eliminar esos usuarios antes
+                        de eliminar la empresa.
+                    </AlertDialogDescription>
+
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+
+                    <AlertDialogCancel>
+                        Cerrar
+                    </AlertDialogCancel>
+
+                </AlertDialogFooter>
+            </>
+        ) : (
+            <>
+                <AlertDialogHeader>
+
+                    <AlertDialogTitle>
+                        ¿Eliminar empresa?
+                    </AlertDialogTitle>
+
+                    <AlertDialogDescription>
+                        ¿Seguro que deseas eliminar{' '}
+                        <strong>
+                            {selectedCompany?.name}
+                        </strong>
+                        ? Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+
+                    <AlertDialogCancel>
+                        Cancelar
+                    </AlertDialogCancel>
+
+                    <AlertDialogAction
+                        onClick={confirmDelete}
+                        className="bg-red-600 text-white hover:bg-red-700"
+                    >
+                        Sí, eliminar
+                    </AlertDialogAction>
+
+                </AlertDialogFooter>
+            </>
+        )}
+
+    </AlertDialogContent>
+</AlertDialog>
+
 
                         {/* ================================= */}
                         {/* INFORMACIÓN */}
@@ -525,19 +636,26 @@ export default function Index({ companies }: Props) {
                                 </div>
 
 
-                                <div className="flex justify-end border-t pt-5">
+                              <div className="flex justify-between border-t pt-5">
 
-                                    <button
-                                        type="button"
-                                        onClick={startEditing}
-                                        className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                          <button
+                               type="button"
+                               onClick={requestDelete}
+                              className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-red-700"
                                     >
-                                        Editar
-                                    </button>
+                                      Eliminar
+                                     </button>
+
+                                     <button
+                                     type="button"
+                                      onClick={startEditing}
+                      className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+                                               >
+                                      Editar
+                                </button>
 
                                 </div>
-
-                            </div>
+                                  </div> 
 
                         )}
 

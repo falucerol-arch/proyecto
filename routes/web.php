@@ -23,3 +23,12 @@ Route::get('/usuarios/crear', [UserController::class, 'create'])
 
     Route::get('/empresas', [CompanyController::class, 'index'])
     ->name('companies.index');
+
+    Route::post('/empresas', [CompanyController::class, 'store'])
+    ->name('companies.store');
+
+    Route::patch('/empresas/{company}', [CompanyController::class, 'update'])
+    ->name('companies.update');
+
+    Route::delete('/empresas/{company}', [CompanyController::class, 'destroy'])
+    ->name('companies.destroy');

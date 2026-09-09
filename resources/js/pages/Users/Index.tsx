@@ -50,6 +50,8 @@ interface User {
     company: Company;
     department: Department;
     photo_path?: string | null;
+    created_at: string;
+   updated_at: string;
 }
 
 interface Props {
@@ -113,6 +115,12 @@ export default function Index({
     // =========================
     const submit = (e: FormEvent) => {
         e.preventDefault();
+        const formatDate = (date: string) => {
+    return new Date(date).toLocaleString('es-GT', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    });
+};
 
         if (!selectedUser) return;
 
@@ -138,9 +146,8 @@ export default function Index({
     };
 
 
-    // =========================
     // ABRIR CONFIRMACIÓN
-    // =========================
+
     const deleteUser = () => {
         if (!selectedUser) return;
 
@@ -148,9 +155,7 @@ export default function Index({
     };
 
 
-    // =========================
     // CONFIRMAR ELIMINACIÓN
-    // =========================
     const confirmDelete = () => {
         if (!selectedUser) return;
 
@@ -164,6 +169,12 @@ export default function Index({
             },
         });
     };
+    const formatDate = (date: string) => {
+    return new Date(date).toLocaleString('es-GT', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    });
+};
 
 
     return (
@@ -225,6 +236,7 @@ export default function Index({
                                     <TableHead className="font-semibold text-gray-600">
                                         Departamento
                                     </TableHead>
+                                    
 
                                 </TableRow>
 
@@ -272,10 +284,7 @@ export default function Index({
 
                 </div>
 
-
-                {/* ========================================= */}
                 {/* MODAL INFORMACIÓN / EDICIÓN */}
-                {/* ========================================= */}
 
                 <Dialog
                     open={selectedUser !== null}
@@ -300,6 +309,7 @@ export default function Index({
 
 
                         {/* INFORMACIÓN DEL USUARIO */}
+
                         {selectedUser && !isEditing && (
 
                             <div className="space-y-6">
@@ -360,7 +370,28 @@ export default function Index({
                                         </p>
                                     </div>
 
+                                    <div>
+    <p className="text-sm text-gray-500">
+        Creado el
+    </p>
+
+    <p className="mt-1 font-medium text-gray-900">
+        {formatDate(selectedUser.created_at)}
+    </p>
+</div>
+
+<div>
+    <p className="text-sm text-gray-500">
+        Última actualización
+    </p>
+
+    <p className="mt-1 font-medium text-gray-900">
+        {formatDate(selectedUser.updated_at)}
+    </p>
+</div>
+
                                 </div>
+                                
 
 
                                 <div className="flex justify-between border-t pt-5">

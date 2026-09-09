@@ -1,5 +1,6 @@
-import { useForm } from '@inertiajs/react';
+
 import { FormEvent } from 'react';
+import { Link, useForm } from '@inertiajs/react';
 
 type Company = {
     id: number;
@@ -33,10 +34,18 @@ export default function Create({ companies, departments }: Props) {
     };
 
     return (
-        <div className="mx-auto max-w-2xl p-8">
-            <h1 className="mb-6 text-2xl font-bold">
-                Crear usuario
-            </h1>
+    <div className="mx-auto max-w-2xl p-8">
+
+        <Link
+            href="/usuarios"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black"
+        >
+            ← Volver al directorio
+        </Link>
+
+        <h1 className="mb-6 text-2xl font-bold">
+            Crear usuario
+        </h1>
 
             <form onSubmit={submit} className="space-y-5">
 

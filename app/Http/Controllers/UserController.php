@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Department;
@@ -14,15 +14,19 @@ use Inertia\Response;
 class UserController extends Controller
 {
     public function index(): Response
-    {
-        // Traemos todos los usuarios y sus relaciones
-        $users = User::with(['company', 'department'])->get();
+    
+{
+    $users = User::with(['company', 'department'])->get();
 
-        // Renderizamos el componente React y le pasamos los datos
-        return Inertia::render('Users/Index', [
-            'users' => $users,
-        ]);
-    }
+    $companies = Company::all();
+    $departments = Department::all();
+
+    return Inertia::render('Users/Index', [
+        'users' => $users,
+        'companies' => $companies,
+        'departments' => $departments,
+    ]);
+}
 
     public function create(): Response
     {
@@ -45,6 +49,7 @@ class UserController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
             'department_id' => ['required', 'exists:departments,id'],
         ]);
+        
 
         // Nunca guardamos la contraseña directamente
         $validated['password'] = Hash::make($validated['password']);
@@ -53,4 +58,44 @@ class UserController extends Controller
 
         return redirect()->route('users.index');
     }
+    public function edit(User $user): Response
+{
+    $companies = Company::all();
+    $departments = Department::all();
+
+    return Inertia::render('Users/Edit', [
+        'user' => $user,
+        'companies' => $companies,
+        'departments' => $departments,
+    ]);
+
+    
+}
+
+public function update(Request $request, User $user): RedirectResponse
+{
+    $validated = $request->validate([
+        'first_name' => ['required', 'string', 'max:255'],
+        'last_name' => ['required', 'string', 'max:255'],
+
+        'email' => [
+            'required',
+            'email',
+            Rule::unique('users', 'email')->ignore($user->id),
+        ],
+
+        'company_id' => ['required', 'exists:companies,id'],
+        'department_id' => ['required', 'exists:departments,id'],
+    ]);
+
+    $user->update($validated);
+
+    return redirect()->route('users.index');
+}
+public function destroy(User $user): RedirectResponse
+{
+    $user->delete();
+
+    return redirect()->route('users.index');
+}
 }

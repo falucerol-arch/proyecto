@@ -10,7 +10,10 @@ class Company extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = [
+          'name',
+    'country',
+    ];
 
     public function users(): HasMany
     {

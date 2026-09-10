@@ -22,11 +22,14 @@ Docker Desktop debe estar abierto para que MinIO pueda almacenar las fotografía
 ```powershell
 git clone https://github.com/falucerol-arch/proyecto.git
 cd proyecto
+
 Instalar las dependencias
 composer install
 npm.cmd instal
+
  Preparar el proyecto
 .\setup.bat
+
 Iniciar
 .\iniciar.bat
 

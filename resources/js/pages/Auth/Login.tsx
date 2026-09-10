@@ -43,10 +43,6 @@ export default function Login() {
                         Iniciar sesión
                     </h1>
 
-                    <p className="mt-2 text-sm text-gray-500">
-                        Ingresa tu correo y contraseña para acceder al sistema.
-                    </p>
-
                 </div>
 
 

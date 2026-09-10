@@ -6,18 +6,34 @@ use App\Models\Company;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
-class DatabaseSeeder extends Seeder
+class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $companies = Company::factory(3)->create();
+        // Crea una empresa básica si todavía no existe
+        $company = Company::firstOrCreate(
+            ['name' => 'Empresa Demo'],
+            ['country' => 'Guatemala']
+        );
 
-        $departments = Department::factory(4)->create();
+        // Crea un departamento básico si todavía no existe
+        $department = Department::firstOrCreate(
+            ['name' => 'Informática']
+        );
 
-        User::factory(10)->create([
-            'company_id' => fn () => $companies->random()->id,
-            'department_id' => fn () => $departments->random()->id,
-        ]);
+        // Crea el usuario de acceso o actualiza su contraseña si ya existe
+        User::updateOrCreate(
+            ['email' => 'admin@proyecto.com'],
+            [
+                'first_name' => 'Administrador',
+                'last_name' => 'Sistema',
+                'password' => Hash::make('Admin12345'),
+                'company_id' => $company->id,
+                'department_id' => $department->id,
+                'photo_path' => null,
+            ]
+        );
     }
 }

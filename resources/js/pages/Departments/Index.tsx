@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import AppSidebar from '@/components/AppSidebar';
@@ -36,194 +36,411 @@ interface Department {
     id: number;
     name: string;
     users_count: number;
-    created_at?: string;
-    updated_at?: string;
+    created_at: string;
+    updated_at: string;
 }
+
 
 interface Props {
     departments: Department[];
 }
 
 
-export default function Index({ departments }: Props) {
+type SortField =
+    | 'name'
+    | 'users';
 
-    // =========================
-    // ESTADOS
-    // =========================
-
-    const [showCreate, setShowCreate] = useState(false);
-
-    const [selectedDepartment, setSelectedDepartment] =
-        useState<Department | null>(null);
-
-    const [isEditing, setIsEditing] = useState(false);
-
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+type SortDirection =
+    | 'asc'
+    | 'desc';
 
 
-    // =========================
-    // FORMULARIO CREAR
-    // =========================
+export default function Index({
+    departments,
+}: Props) {
 
-    const {
-        data,
-        setData,
-        post,
-        processing,
-        errors,
-        reset,
-        clearErrors,
-    } = useForm({
+    // Guarda el departamento seleccionado
+    const [
+        selectedDepartment,
+        setSelectedDepartment,
+    ] = useState<Department | null>(null);
+
+    // Indica si se está editando el departamento
+    const [isEditing, setIsEditing] =
+        useState(false);
+
+    // Abre o cierra el formulario para agregar departamentos
+    const [
+        showCreateDepartment,
+        setShowCreateDepartment,
+    ] = useState(false);
+
+    // Abre o cierra la confirmación para eliminar
+    const [
+        showDeleteConfirm,
+        setShowDeleteConfirm,
+    ] = useState(false);
+
+
+    // Guarda lo escrito en el buscador
+    const [searchTerm, setSearchTerm] =
+        useState('');
+
+    // Guarda la página actual
+    const [currentPage, setCurrentPage] =
+        useState(1);
+
+    // Máximo de departamentos mostrados por página
+    const departmentsPerPage = 10;
+
+
+    // Guarda la columna utilizada para ordenar
+    const [sortField, setSortField] =
+        useState<SortField>('name');
+
+    // Guarda si el orden es ascendente o descendente
+    const [sortDirection, setSortDirection] =
+        useState<SortDirection>('asc');
+
+
+    // Formulario para registrar departamentos
+    const createForm = useForm({
         name: '',
     });
 
 
-    // =========================
-    // FORMULARIO EDITAR
-    // =========================
-
+    // Formulario para editar departamentos
     const editForm = useForm({
         name: '',
     });
 
 
-    // =========================
-    // CREAR DEPARTAMENTO
-    // =========================
+    // Esta función registra un departamento nuevo
+    const submitCreate = (
+        e: FormEvent
+    ) => {
 
-    const submitDepartment = (e: FormEvent) => {
         e.preventDefault();
 
-        post('/departamentos', {
-            preserveScroll: true,
 
-            onSuccess: () => {
-                setShowCreate(false);
-                reset();
-            },
-        });
+        createForm.post(
+            '/departamentos',
+            {
+                preserveScroll: true,
+
+                onSuccess: () => {
+
+                    createForm.reset();
+
+                    createForm.clearErrors();
+
+                    setShowCreateDepartment(
+                        false
+                    );
+                },
+            }
+        );
     };
 
 
-    // =========================
-    // CERRAR MODAL CREAR
-    // =========================
+    // Esta función cierra el formulario de registro
+    const closeCreateDepartment = () => {
 
-    const closeCreate = () => {
-        setShowCreate(false);
-        reset();
-        clearErrors();
+        setShowCreateDepartment(
+            false
+        );
+
+        createForm.reset();
+
+        createForm.clearErrors();
     };
 
 
-    // =========================
-    // ABRIR DEPARTAMENTO
-    // =========================
-
-    const openDepartment = (department: Department) => {
-        setSelectedDepartment(department);
-        setIsEditing(false);
-        editForm.clearErrors();
-    };
-
-
-    // =========================
-    // ACTIVAR EDICIÓN
-    // =========================
-
+    // Esta función carga la información para poder editarla
     const startEditing = () => {
-        if (!selectedDepartment) return;
+
+        if (
+            !selectedDepartment
+        ) {
+            return;
+        }
+
 
         editForm.clearErrors();
 
-        editForm.setData({
-            name: selectedDepartment.name,
-        });
+
+        editForm.setData(
+            'name',
+            selectedDepartment.name
+        );
+
 
         setIsEditing(true);
     };
 
 
-    // =========================
-    // ACTUALIZAR
-    // =========================
+    // Esta función guarda los cambios del departamento
+    const submitEdit = (
+        e: FormEvent
+    ) => {
 
-    const updateDepartment = (e: FormEvent) => {
         e.preventDefault();
 
-        if (!selectedDepartment) return;
 
-        editForm.patch(`/departamentos/${selectedDepartment.id}`, {
-            preserveScroll: true,
-            preserveState: false,
+        if (
+            !selectedDepartment
+        ) {
+            return;
+        }
 
-            onSuccess: () => {
-                setSelectedDepartment(null);
-                setIsEditing(false);
-                editForm.reset();
-            },
-        });
+
+        editForm.patch(
+            `/departamentos/${selectedDepartment.id}`,
+            {
+                preserveScroll: true,
+
+                preserveState: false,
+
+                onSuccess: () => {
+
+                    setIsEditing(false);
+
+                    setSelectedDepartment(
+                        null
+                    );
+                },
+            }
+        );
     };
 
 
-    // =========================
-    // CERRAR MODAL
-    // =========================
+    // Esta función cancela la edición
+    const cancelEditing = () => {
 
-    const closeDepartment = () => {
-        setSelectedDepartment(null);
-        setIsEditing(false);
-        setShowDeleteConfirm(false);
         editForm.reset();
+
+        editForm.clearErrors();
+
+        setIsEditing(false);
+    };
+
+
+    // Esta función cierra la información del departamento
+    const closeDialog = () => {
+
+        setSelectedDepartment(
+            null
+        );
+
+        setIsEditing(false);
+
         editForm.clearErrors();
     };
 
 
-    // =========================
-    // PEDIR ELIMINACIÓN
-    // =========================
+    // Esta función abre la confirmación para eliminar
+    const deleteDepartment = () => {
 
-    const requestDelete = () => {
-        if (!selectedDepartment) return;
-
-        setShowDeleteConfirm(true);
-    };
-
-
-    // =========================
-    // CONFIRMAR ELIMINACIÓN
-    // =========================
-
-    const confirmDelete = () => {
-        if (!selectedDepartment) return;
-
-        if (selectedDepartment.users_count > 0) return;
-
-        router.delete(`/departamentos/${selectedDepartment.id}`, {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                setShowDeleteConfirm(false);
-                setSelectedDepartment(null);
-                setIsEditing(false);
-            },
-        });
-    };
-
-
-    // =========================
-    // FORMATEAR FECHA
-    // =========================
-
-    const formatDate = (date?: string) => {
-        if (!date) {
-            return 'Sin información';
+        if (
+            !selectedDepartment
+        ) {
+            return;
         }
 
-        return new Date(date).toLocaleString('es-GT', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        });
+
+        setShowDeleteConfirm(
+            true
+        );
+    };
+
+
+    // Esta función elimina el departamento cuando no tiene usuarios asociados
+    const confirmDelete = () => {
+
+        if (
+            !selectedDepartment
+        ) {
+            return;
+        }
+
+
+        if (
+            selectedDepartment.users_count >
+            0
+        ) {
+            return;
+        }
+
+
+        router.delete(
+            `/departamentos/${selectedDepartment.id}`,
+            {
+                preserveScroll: true,
+
+                onSuccess: () => {
+
+                    setShowDeleteConfirm(
+                        false
+                    );
+
+                    setSelectedDepartment(
+                        null
+                    );
+
+                    setIsEditing(
+                        false
+                    );
+                },
+            }
+        );
+    };
+
+
+    // Esta función cambia entre orden ascendente y descendente
+    const handleSort = (
+        field: SortField
+    ) => {
+
+        if (
+            sortField === field
+        ) {
+
+            setSortDirection(
+                sortDirection ===
+                'asc'
+                    ? 'desc'
+                    : 'asc'
+            );
+
+        } else {
+
+            setSortField(field);
+
+            setSortDirection(
+                'asc'
+            );
+        }
+
+
+        setCurrentPage(1);
+    };
+
+
+    // Busca departamentos utilizando el nombre
+    const filteredDepartments =
+        departments.filter(
+            (department) => {
+
+                const search =
+                    searchTerm
+                        .trim()
+                        .toLowerCase();
+
+
+                return department.name
+                    .toLowerCase()
+                    .includes(search);
+            }
+        );
+
+
+    // Ordena los departamentos antes de mostrarlos
+    const sortedDepartments =
+        [...filteredDepartments].sort(
+            (a, b) => {
+
+                // Si se ordena por usuarios compara números
+                if (
+                    sortField ===
+                    'users'
+                ) {
+
+                    return sortDirection ===
+                        'asc'
+                        ? a.users_count -
+                              b.users_count
+                        : b.users_count -
+                              a.users_count;
+                }
+
+
+                const result =
+                    a.name.localeCompare(
+                        b.name,
+                        'es',
+                        {
+                            sensitivity:
+                                'base',
+                        }
+                    );
+
+
+                return sortDirection ===
+                    'asc'
+                    ? result
+                    : -result;
+            }
+        );
+
+
+    // Calcula la cantidad total de páginas
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                sortedDepartments.length /
+                    departmentsPerPage
+            )
+        );
+
+
+    // Evita quedar en una página que ya no existe
+    useEffect(() => {
+
+        if (
+            currentPage >
+            totalPages
+        ) {
+
+            setCurrentPage(
+                totalPages
+            );
+        }
+
+    }, [
+        currentPage,
+        totalPages,
+    ]);
+
+
+    const startIndex =
+        (currentPage - 1) *
+        departmentsPerPage;
+
+
+    // Obtiene solamente los departamentos de la página actual
+    const visibleDepartments =
+        sortedDepartments.slice(
+            startIndex,
+            startIndex +
+                departmentsPerPage
+        );
+
+
+    // Esta función muestra las fechas en formato de Guatemala
+    const formatDate = (
+        date: string
+    ) => {
+
+        return new Date(
+            date
+        ).toLocaleString(
+            'es-GT',
+            {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+            }
+        );
     };
 
 
@@ -238,7 +455,7 @@ export default function Index({ departments }: Props) {
                 <Head title="Departamentos" />
 
 
-                {/* TÍTULO */}
+                {/* Encabezado */}
                 <div className="mb-6 flex items-center justify-between">
 
                     <div>
@@ -248,16 +465,23 @@ export default function Index({ departments }: Props) {
                         </h1>
 
                         <p className="mt-1 text-sm text-gray-500">
-                            Administra los departamentos registrados en el sistema.
+                            Departamentos registrados.
                         </p>
 
                     </div>
 
 
+                    {/* Este botón abre el formulario para registrar un departamento */}
                     <button
                         type="button"
-                        onClick={() => setShowCreate(true)}
-                        className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+
+                        onClick={() =>
+                            setShowCreateDepartment(
+                                true
+                            )
+                        }
+
+                        className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
                     >
                         + Agregar departamento
                     </button>
@@ -265,7 +489,36 @@ export default function Index({ departments }: Props) {
                 </div>
 
 
-                {/* TABLA */}
+                {/* Este campo permite buscar departamentos por nombre */}
+                <div className="mb-4">
+
+                    <input
+                        type="text"
+
+                        placeholder="Buscar departamento..."
+
+                        value={
+                            searchTerm
+                        }
+
+                        onChange={(e) => {
+
+                            setSearchTerm(
+                                e.target.value
+                            );
+
+                            setCurrentPage(
+                                1
+                            );
+                        }}
+
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-gray-500 sm:max-w-md"
+                    />
+
+                </div>
+
+
+                {/* Tabla de departamentos */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 
                     <div className="overflow-x-auto">
@@ -276,12 +529,73 @@ export default function Index({ departments }: Props) {
 
                                 <TableRow className="bg-gray-50">
 
-                                    <TableHead className="font-semibold text-gray-600">
-                                        Nombre
+                                    <TableHead>
+
+                                        {/* Este botón ordena los departamentos por nombre */}
+                                        <button
+                                            type="button"
+
+                                            onClick={() =>
+                                                handleSort(
+                                                    'name'
+                                                )
+                                            }
+
+                                            className="flex items-center gap-2 font-semibold text-gray-600 hover:text-black"
+                                        >
+                                            Departamento
+
+                                            {sortField ===
+                                                'name' && (
+
+                                                <span>
+                                                    {
+                                                        sortDirection ===
+                                                        'asc'
+                                                            ? '↑'
+                                                            : '↓'
+                                                    }
+                                                </span>
+
+                                            )}
+
+                                        </button>
+
                                     </TableHead>
 
-                                    <TableHead className="font-semibold text-gray-600">
-                                        Usuarios
+
+                                    <TableHead>
+
+                                        {/* Este botón ordena por cantidad de usuarios */}
+                                        <button
+                                            type="button"
+
+                                            onClick={() =>
+                                                handleSort(
+                                                    'users'
+                                                )
+                                            }
+
+                                            className="flex items-center gap-2 font-semibold text-gray-600 hover:text-black"
+                                        >
+                                            Usuarios
+
+                                            {sortField ===
+                                                'users' && (
+
+                                                <span>
+                                                    {
+                                                        sortDirection ===
+                                                        'asc'
+                                                            ? '↑'
+                                                            : '↓'
+                                                    }
+                                                </span>
+
+                                            )}
+
+                                        </button>
+
                                     </TableHead>
 
                                 </TableRow>
@@ -291,25 +605,67 @@ export default function Index({ departments }: Props) {
 
                             <TableBody>
 
-                                {departments.map((department) => (
+                                {visibleDepartments.length ===
+                                    0 && (
 
-                                    <TableRow
-                                        key={department.id}
-                                        onClick={() => openDepartment(department)}
-                                        className="cursor-pointer transition-colors hover:bg-gray-50"
-                                    >
+                                    <TableRow>
 
-                                        <TableCell className="font-medium text-gray-900">
-                                            {department.name}
-                                        </TableCell>
-
-                                        <TableCell className="text-gray-600">
-                                            {department.users_count}
+                                        <TableCell
+                                            colSpan={
+                                                2
+                                            }
+                                            className="py-8 text-center text-gray-500"
+                                        >
+                                            No se encontraron departamentos.
                                         </TableCell>
 
                                     </TableRow>
 
-                                ))}
+                                )}
+
+
+                                {visibleDepartments.map(
+                                    (
+                                        department
+                                    ) => (
+
+                                        <TableRow
+                                            key={
+                                                department.id
+                                            }
+
+                                            // Al hacer clic abre la información del departamento
+                                            onClick={() => {
+
+                                                setSelectedDepartment(
+                                                    department
+                                                );
+
+                                                setIsEditing(
+                                                    false
+                                                );
+                                            }}
+
+                                            className="cursor-pointer hover:bg-gray-50"
+                                        >
+
+                                            <TableCell className="font-medium">
+                                                {
+                                                    department.name
+                                                }
+                                            </TableCell>
+
+
+                                            <TableCell>
+                                                {
+                                                    department.users_count
+                                                }
+                                            </TableCell>
+
+                                        </TableRow>
+
+                                    )
+                                )}
 
                             </TableBody>
 
@@ -320,15 +676,113 @@ export default function Index({ departments }: Props) {
                 </div>
 
 
-                {/* ============================== */}
-                {/* MODAL CREAR */}
-                {/* ============================== */}
+                {/* Esta parte permite cambiar entre páginas */}
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
+                    <p className="text-sm text-gray-500">
+
+                        Mostrando{' '}
+
+                        {filteredDepartments.length ===
+                        0
+                            ? 0
+                            : startIndex +
+                              1}
+
+                        {' - '}
+
+                        {Math.min(
+                            startIndex +
+                                departmentsPerPage,
+
+                            filteredDepartments.length
+                        )}
+
+                        {' de '}
+
+                        {
+                            filteredDepartments.length
+                        }
+
+                        {' departamentos'}
+
+                    </p>
+
+
+                    <div className="flex items-center gap-2">
+
+                        {/* Este botón muestra la página anterior */}
+                        <button
+                            type="button"
+
+                            disabled={
+                                currentPage ===
+                                1
+                            }
+
+                            onClick={() =>
+                                setCurrentPage(
+                                    (page) =>
+                                        Math.max(
+                                            page -
+                                                1,
+                                            1
+                                        )
+                                )
+                            }
+
+                            className="rounded-lg border bg-white px-4 py-2 text-sm disabled:opacity-40"
+                        >
+                            Anterior
+                        </button>
+
+
+                        <span className="text-sm text-gray-600">
+                            Página {currentPage} de {totalPages}
+                        </span>
+
+
+                        {/* Este botón muestra la página siguiente */}
+                        <button
+                            type="button"
+
+                            disabled={
+                                currentPage >=
+                                totalPages
+                            }
+
+                            onClick={() =>
+                                setCurrentPage(
+                                    (page) =>
+                                        Math.min(
+                                            page +
+                                                1,
+
+                                            totalPages
+                                        )
+                                )
+                            }
+
+                            className="rounded-lg border bg-white px-4 py-2 text-sm disabled:opacity-40"
+                        >
+                            Siguiente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                {/* Formulario para registrar departamento */}
                 <Dialog
-                    open={showCreate}
+                    open={
+                        showCreateDepartment
+                    }
+
                     onOpenChange={(open) => {
+
                         if (!open) {
-                            closeCreate();
+                            closeCreateDepartment();
                         }
                     }}
                 >
@@ -338,37 +792,53 @@ export default function Index({ departments }: Props) {
                         <DialogHeader>
 
                             <DialogTitle>
-                                Nuevo departamento
+                                Agregar departamento
                             </DialogTitle>
 
                         </DialogHeader>
 
 
                         <form
-                            onSubmit={submitDepartment}
+                            onSubmit={
+                                submitCreate
+                            }
+
                             className="space-y-5"
                         >
 
                             <div>
 
-                                <label className="text-sm font-medium text-gray-700">
+                                <label className="text-sm font-medium">
                                     Nombre
                                 </label>
 
+
                                 <input
                                     type="text"
-                                    value={data.name}
-                                    onChange={(e) =>
-                                        setData('name', e.target.value)
+
+                                    value={
+                                        createForm.data.name
                                     }
-                                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-gray-500"
-                                    placeholder="Nombre del departamento"
+
+                                    onChange={(e) =>
+                                        createForm.setData(
+                                            'name',
+                                            e.target.value
+                                        )
+                                    }
+
+                                    className="mt-1 w-full rounded-md border px-3 py-2"
                                 />
 
-                                {errors.name && (
+
+                                {createForm.errors.name && (
+
                                     <p className="mt-1 text-sm text-red-500">
-                                        {errors.name}
+                                        {
+                                            createForm.errors.name
+                                        }
                                     </p>
+
                                 )}
 
                             </div>
@@ -376,23 +846,35 @@ export default function Index({ departments }: Props) {
 
                             <div className="flex justify-end gap-3 border-t pt-5">
 
+                                {/* Este botón cierra el formulario sin guardar */}
                                 <button
                                     type="button"
-                                    onClick={closeCreate}
-                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100"
+
+                                    onClick={
+                                        closeCreateDepartment
+                                    }
+
+                                    className="rounded-lg border px-5 py-2.5 text-sm"
                                 >
                                     Cancelar
                                 </button>
 
 
+                                {/* Este botón registra el nuevo departamento */}
                                 <button
                                     type="submit"
-                                    disabled={processing}
-                                    className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+
+                                    disabled={
+                                        createForm.processing
+                                    }
+
+                                    className="rounded-lg bg-black px-5 py-2.5 text-sm text-white disabled:opacity-50"
                                 >
-                                    {processing
+
+                                    {createForm.processing
                                         ? 'Guardando...'
-                                        : 'Guardar departamento'}
+                                        : 'Guardar'}
+
                                 </button>
 
                             </div>
@@ -404,24 +886,29 @@ export default function Index({ departments }: Props) {
                 </Dialog>
 
 
-                {/* ============================== */}
-                {/* MODAL INFORMACIÓN / EDICIÓN */}
-                {/* ============================== */}
-
+                {/* Ventana para ver o editar el departamento */}
                 <Dialog
-                    open={selectedDepartment !== null}
+                    open={
+                        selectedDepartment !==
+                        null
+                    }
+
                     onOpenChange={(open) => {
-                        if (!open && !showDeleteConfirm) {
-                            closeDepartment();
+
+                        if (
+                            !open &&
+                            !showDeleteConfirm
+                        ) {
+                            closeDialog();
                         }
                     }}
                 >
 
-                    <DialogContent className="p-8 sm:max-w-xl">
+                    <DialogContent className="sm:max-w-xl">
 
                         <DialogHeader>
 
-                            <DialogTitle className="text-xl">
+                            <DialogTitle>
 
                                 {isEditing
                                     ? 'Editar departamento'
@@ -432,70 +919,70 @@ export default function Index({ departments }: Props) {
                         </DialogHeader>
 
 
-                        {/* INFORMACIÓN */}
-                        {selectedDepartment && !isEditing && (
+                        {selectedDepartment &&
+                            !isEditing && (
 
                             <div className="space-y-6">
 
                                 <div className="grid gap-5 sm:grid-cols-2">
 
                                     <div>
-
                                         <p className="text-sm text-gray-500">
-                                            Nombre
+                                            Departamento
                                         </p>
 
-                                        <p className="mt-1 font-medium text-gray-900">
-                                            {selectedDepartment.name}
+                                        <p className="mt-1 font-medium">
+                                            {
+                                                selectedDepartment.name
+                                            }
                                         </p>
-
                                     </div>
 
 
                                     <div>
-
                                         <p className="text-sm text-gray-500">
                                             Usuarios asociados
                                         </p>
 
-                                        <p className="mt-1 font-medium text-gray-900">
-                                            {selectedDepartment.users_count}
+                                        <p className="mt-1 font-medium">
+                                            {
+                                                selectedDepartment.users_count
+                                            }
                                         </p>
-
                                     </div>
 
 
-                                    <div className="space-y-5">
+                                    <div>
+                                        <p className="text-sm text-gray-500">
+                                            Creado el
+                                        </p>
 
-                                        <div>
+                                        <p className="mt-1 font-medium">
 
-                                            <p className="text-sm text-gray-500">
-                                                Creado el
-                                            </p>
-
-                                            <p className="mt-1 font-medium text-gray-900">
-                                                {formatDate(
+                                            {
+                                                formatDate(
                                                     selectedDepartment.created_at
-                                                )}
-                                            </p>
+                                                )
+                                            }
 
-                                        </div>
+                                        </p>
+                                    </div>
 
 
-                                        <div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">
+                                            Última actualización
+                                        </p>
 
-                                            <p className="text-sm text-gray-500">
-                                                Última actualización
-                                            </p>
+                                        <p className="mt-1 font-medium">
 
-                                            <p className="mt-1 font-medium text-gray-900">
-                                                {formatDate(
+                                            {
+                                                formatDate(
                                                     selectedDepartment.updated_at
-                                                )}
-                                            </p>
+                                                )
+                                            }
 
-                                        </div>
-
+                                        </p>
                                     </div>
 
                                 </div>
@@ -503,19 +990,29 @@ export default function Index({ departments }: Props) {
 
                                 <div className="flex justify-between border-t pt-5">
 
+                                    {/* Este botón abre la confirmación para eliminar */}
                                     <button
                                         type="button"
-                                        onClick={requestDelete}
-                                        className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-red-700"
+
+                                        onClick={
+                                            deleteDepartment
+                                        }
+
+                                        className="rounded-lg bg-red-600 px-5 py-2.5 text-sm text-white"
                                     >
                                         Eliminar
                                     </button>
 
 
+                                    {/* Este botón permite editar el departamento */}
                                     <button
                                         type="button"
-                                        onClick={startEditing}
-                                        className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+
+                                        onClick={
+                                            startEditing
+                                        }
+
+                                        className="rounded-lg bg-black px-5 py-2.5 text-sm text-white"
                                     >
                                         Editar
                                     </button>
@@ -527,36 +1024,50 @@ export default function Index({ departments }: Props) {
                         )}
 
 
-                        {/* EDICIÓN */}
-                        {selectedDepartment && isEditing && (
+                        {selectedDepartment &&
+                            isEditing && (
 
                             <form
-                                onSubmit={updateDepartment}
+                                onSubmit={
+                                    submitEdit
+                                }
+
                                 className="space-y-5"
                             >
 
                                 <div>
 
-                                    <label className="text-sm font-medium text-gray-700">
+                                    <label className="text-sm font-medium">
                                         Nombre
                                     </label>
 
+
                                     <input
                                         type="text"
-                                        value={editForm.data.name}
+
+                                        value={
+                                            editForm.data.name
+                                        }
+
                                         onChange={(e) =>
                                             editForm.setData(
                                                 'name',
                                                 e.target.value
                                             )
                                         }
-                                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-gray-500"
+
+                                        className="mt-1 w-full rounded-md border px-3 py-2"
                                     />
 
+
                                     {editForm.errors.name && (
+
                                         <p className="mt-1 text-sm text-red-500">
-                                            {editForm.errors.name}
+                                            {
+                                                editForm.errors.name
+                                            }
                                         </p>
+
                                     )}
 
                                 </div>
@@ -564,26 +1075,35 @@ export default function Index({ departments }: Props) {
 
                                 <div className="flex justify-end gap-3 border-t pt-5">
 
+                                    {/* Este botón cancela la edición */}
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setIsEditing(false);
-                                            editForm.clearErrors();
-                                        }}
-                                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100"
+
+                                        onClick={
+                                            cancelEditing
+                                        }
+
+                                        className="rounded-lg border px-5 py-2.5 text-sm"
                                     >
                                         Cancelar
                                     </button>
 
 
+                                    {/* Este botón guarda los cambios */}
                                     <button
                                         type="submit"
-                                        disabled={editForm.processing}
-                                        className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+
+                                        disabled={
+                                            editForm.processing
+                                        }
+
+                                        className="rounded-lg bg-black px-5 py-2.5 text-sm text-white disabled:opacity-50"
                                     >
+
                                         {editForm.processing
                                             ? 'Guardando...'
                                             : 'Guardar cambios'}
+
                                     </button>
 
                                 </div>
@@ -597,99 +1117,76 @@ export default function Index({ departments }: Props) {
                 </Dialog>
 
 
-                {/* ============================== */}
-                {/* CONFIRMACIÓN ELIMINAR */}
-                {/* ============================== */}
-
+                {/* Confirmación para eliminar un departamento */}
                 <AlertDialog
-                    open={showDeleteConfirm}
-                    onOpenChange={setShowDeleteConfirm}
+                    open={
+                        showDeleteConfirm
+                    }
+
+                    onOpenChange={
+                        setShowDeleteConfirm
+                    }
                 >
 
                     <AlertDialogContent>
 
-                        {selectedDepartment &&
-                        selectedDepartment.users_count > 0 ? (
+                        <AlertDialogHeader>
 
-                            <>
-                                <AlertDialogHeader>
+                            <AlertDialogTitle>
 
-                                    <AlertDialogTitle>
-                                        No se puede eliminar
-                                    </AlertDialogTitle>
+                                {selectedDepartment &&
+                                selectedDepartment.users_count >
+                                    0
+                                    ? 'No se puede eliminar'
+                                    : '¿Eliminar departamento?'}
 
-                                    <AlertDialogDescription>
-
-                                        El departamento{' '}
-
-                                        <strong>
-                                            {selectedDepartment.name}
-                                        </strong>{' '}
-
-                                        tiene {selectedDepartment.users_count}{' '}
-                                        usuario(s) asociado(s).
-
-                                        Debes cambiar o eliminar esos usuarios
-                                        antes de eliminar el departamento.
-
-                                    </AlertDialogDescription>
-
-                                </AlertDialogHeader>
+                            </AlertDialogTitle>
 
 
-                                <AlertDialogFooter>
+                            <AlertDialogDescription>
 
-                                    <AlertDialogCancel>
-                                        Cerrar
-                                    </AlertDialogCancel>
+                                {selectedDepartment &&
+                                selectedDepartment.users_count >
+                                    0
+                                    ? `El departamento tiene ${selectedDepartment.users_count} usuario(s) asociado(s).`
+                                    : 'Esta acción no se puede deshacer.'}
 
-                                </AlertDialogFooter>
+                            </AlertDialogDescription>
 
-                            </>
-
-                        ) : (
-
-                            <>
-                                <AlertDialogHeader>
-
-                                    <AlertDialogTitle>
-                                        ¿Eliminar departamento?
-                                    </AlertDialogTitle>
-
-                                    <AlertDialogDescription>
-
-                                        ¿Seguro que deseas eliminar{' '}
-
-                                        <strong>
-                                            {selectedDepartment?.name}
-                                        </strong>
-
-                                        ? Esta acción no se puede deshacer.
-
-                                    </AlertDialogDescription>
-
-                                </AlertDialogHeader>
+                        </AlertDialogHeader>
 
 
-                                <AlertDialogFooter>
+                        <AlertDialogFooter>
 
-                                    <AlertDialogCancel>
-                                        Cancelar
-                                    </AlertDialogCancel>
+                            <AlertDialogCancel>
+
+                                {selectedDepartment &&
+                                selectedDepartment.users_count >
+                                    0
+                                    ? 'Cerrar'
+                                    : 'Cancelar'}
+
+                            </AlertDialogCancel>
 
 
-                                    <AlertDialogAction
-                                        onClick={confirmDelete}
-                                        className="bg-red-600 text-white hover:bg-red-700"
-                                    >
-                                        Sí, eliminar
-                                    </AlertDialogAction>
+                            {selectedDepartment &&
+                                selectedDepartment.users_count ===
+                                    0 && (
 
-                                </AlertDialogFooter>
+                                /* Este botón elimina definitivamente el departamento */
+                                <AlertDialogAction
+                                    onClick={
+                                        confirmDelete
+                                    }
 
-                            </>
+                                    className="bg-red-600 text-white hover:bg-red-700"
+                                >
+                                    Sí, eliminar
+                                </AlertDialogAction>
 
-                        )}
+                            )}
+
+                        </AlertDialogFooter>
 
                     </AlertDialogContent>
 

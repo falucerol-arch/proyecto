@@ -36,40 +36,59 @@ import {
 } from '@/components/ui/table';
 
 
-// Define la estructura de una empresa
+// Información básica de una empresa
 interface Company {
     id: number;
     name: string;
 }
 
 
-// Define la estructura de un departamento
+// Información básica de un departamento
 interface Department {
     id: number;
     name: string;
 }
 
 
-// Define la estructura de un usuario
+// Información que tiene cada usuario
 interface User {
     id: number;
     first_name: string;
     last_name: string;
     email: string;
+
     company: Company;
     department: Department;
+
+    // Puesto o cargo del usuario
+    position: string | null;
+
     photo_path?: string | null;
+
     created_at: string;
     updated_at: string;
 }
 
 
-// Datos enviados desde Laravel a esta página
+// Información recibida desde Laravel
 interface Props {
     users: User[];
     companies: Company[];
     departments: Department[];
 }
+
+
+// Columnas que se pueden ordenar
+type SortField =
+    | 'name'
+    | 'email'
+    | 'department';
+
+
+// Tipos de orden
+type SortDirection =
+    | 'asc'
+    | 'desc';
 
 
 export default function Index({
@@ -78,99 +97,118 @@ export default function Index({
     departments,
 }: Props) {
 
-    // =====================================================
-    // ESTADOS DE LOS MODALES
-    // =====================================================
-
-    // Guarda el usuario que se selecciona en la tabla
+    // Guarda el usuario seleccionado de la tabla
     const [selectedUser, setSelectedUser] =
         useState<User | null>(null);
 
-    // Indica si el modal está en modo edición
+    // Indica si se está editando el usuario
     const [isEditing, setIsEditing] =
         useState(false);
 
-    // Controla la ventana para confirmar eliminación
-    const [showDeleteConfirm, setShowDeleteConfirm] =
-        useState(false);
+    // Muestra la confirmación para eliminar
+    const [
+        showDeleteConfirm,
+        setShowDeleteConfirm,
+    ] = useState(false);
 
-    // Controla la ventana para registrar usuarios
-    const [showCreateUser, setShowCreateUser] =
-        useState(false);
-
-
-
-    // =====================================================
-    // VISTAS PREVIAS DE FOTOGRAFÍAS
-    // =====================================================
-
-    // Foto seleccionada al registrar un usuario
-    const [photoPreview, setPhotoPreview] =
-        useState<string | null>(null);
-
-    // Foto nueva seleccionada al editar un usuario
-    const [editPhotoPreview, setEditPhotoPreview] =
-        useState<string | null>(null);
+    // Muestra el formulario para registrar usuario
+    const [
+        showCreateUser,
+        setShowCreateUser,
+    ] = useState(false);
 
 
+    // Guarda la vista previa de la foto al registrar
+    const [
+        photoPreview,
+        setPhotoPreview,
+    ] = useState<string | null>(null);
 
-    // =====================================================
-    // BÚSQUEDA Y PAGINACIÓN
-    // =====================================================
+    // Guarda la vista previa de la foto al editar
+    const [
+        editPhotoPreview,
+        setEditPhotoPreview,
+    ] = useState<string | null>(null);
 
-    // Texto escrito en el buscador
-    const [searchTerm, setSearchTerm] =
-        useState('');
 
-    // Departamento seleccionado en el filtro
-    const [departmentFilter, setDepartmentFilter] =
-        useState('');
+    // Guarda lo escrito en el buscador
+    const [
+        searchTerm,
+        setSearchTerm,
+    ] = useState('');
 
-    // Página actual
-    const [currentPage, setCurrentPage] =
-        useState(1);
+    // Guarda el departamento utilizado como filtro
+    const [
+        departmentFilter,
+        setDepartmentFilter,
+    ] = useState('');
 
-    // Cantidad máxima de usuarios por página
+    // Página que se está mostrando
+    const [
+        currentPage,
+        setCurrentPage,
+    ] = useState(1);
+
+    // Máximo de usuarios por página
     const usersPerPage = 10;
 
 
+    // Columna utilizada para ordenar
+    const [
+        sortField,
+        setSortField,
+    ] = useState<SortField>('name');
 
-    // =====================================================
-    // ESTADOS DEL RECORTADOR DE FOTOGRAFÍAS
-    // =====================================================
+    // Guarda si el orden es ascendente o descendente
+    const [
+        sortDirection,
+        setSortDirection,
+    ] = useState<SortDirection>('asc');
 
-    // Abre o cierra el recortador
-    const [showCropper, setShowCropper] =
-        useState(false);
 
-    // Imagen original que se va a recortar
-    const [cropSource, setCropSource] =
-        useState<string | null>(null);
+    // Abre o cierra el recortador de fotografías
+    const [
+        showCropper,
+        setShowCropper,
+    ] = useState(false);
 
-    // Posición X/Y de la fotografía
-    const [crop, setCrop] = useState({
+    // Guarda temporalmente la foto que se va a recortar
+    const [
+        cropSource,
+        setCropSource,
+    ] = useState<string | null>(null);
+
+    // Guarda la posición de la fotografía
+    const [
+        crop,
+        setCrop,
+    ] = useState({
         x: 0,
         y: 0,
     });
 
-    // Nivel de zoom
-    const [zoom, setZoom] =
-        useState(1);
+    // Guarda el zoom utilizado
+    const [
+        zoom,
+        setZoom,
+    ] = useState(1);
 
-    // Área exacta seleccionada por react-easy-crop
-    const [croppedAreaPixels, setCroppedAreaPixels] =
-        useState<Area | null>(null);
+    // Guarda el área seleccionada de la fotografía
+    const [
+        croppedAreaPixels,
+        setCroppedAreaPixels,
+    ] = useState<Area | null>(null);
 
-    // Indica si la foto pertenece a crear o editar
-    const [photoMode, setPhotoMode] =
-        useState<'create' | 'edit'>('create');
+    // Indica si la foto pertenece a registrar o editar
+    const [
+        photoMode,
+        setPhotoMode,
+    ] = useState<'create' | 'edit'>(
+        'create'
+    );
 
 
-
-    // =====================================================
-    // FORMULARIO PARA EDITAR USUARIO
-    // =====================================================
-
+    // Formulario utilizado para editar usuario
     const {
         data,
         setData,
@@ -180,128 +218,121 @@ export default function Index({
         clearErrors,
         reset,
     } = useForm({
-        // Laravel interpretará este POST como PATCH
+
         _method: 'patch',
 
         first_name: '',
         last_name: '',
         email: '',
+
         company_id: '',
         department_id: '',
 
-        // Archivo nuevo de fotografía
+        // Aquí se guarda el puesto
+        position: '',
+
         photo: null as File | null,
     });
 
 
-
-    // =====================================================
-    // FORMULARIO PARA REGISTRAR USUARIO
-    // =====================================================
-
+    // Formulario utilizado para registrar usuario
     const createForm = useForm({
         first_name: '',
         last_name: '',
         email: '',
         password: '',
+
         company_id: '',
         department_id: '',
 
-        // Fotografía que se enviará a Laravel
+        // Aquí se guarda el puesto
+        position: '',
+
         photo: null as File | null,
     });
 
 
-
-    // =====================================================
-    // SELECCIONAR FOTO AL REGISTRAR
-    // =====================================================
-
+    // Esta función abre el recortador al seleccionar una foto
     const handleCreatePhoto = (
         e: ChangeEvent<HTMLInputElement>
     ) => {
 
-        // Obtiene la fotografía seleccionada
-        const file = e.target.files?.[0];
+        const file =
+            e.target.files?.[0];
 
-        // Si no hay archivo no continúa
         if (!file) return;
 
 
-        // Libera una fotografía anterior del recortador
         if (cropSource) {
-            URL.revokeObjectURL(cropSource);
+            URL.revokeObjectURL(
+                cropSource
+            );
         }
 
 
-        // Crea una dirección temporal para visualizarla
         const imageUrl =
             URL.createObjectURL(file);
 
 
-        // Guarda la imagen en el recortador
-        setCropSource(imageUrl);
+        setCropSource(
+            imageUrl
+        );
 
-        // Indica que estamos registrando
-        setPhotoMode('create');
+        setPhotoMode(
+            'create'
+        );
 
-
-        // Reinicia posición
         setCrop({
             x: 0,
             y: 0,
         });
 
-        // Reinicia zoom
         setZoom(1);
 
-        // Limpia el recorte anterior
-        setCroppedAreaPixels(null);
+        setCroppedAreaPixels(
+            null
+        );
 
-        // Abre la ventana del recortador
-        setShowCropper(true);
+        setShowCropper(
+            true
+        );
 
 
-        // Permite seleccionar nuevamente
-        // el mismo archivo si se desea
+        // Permite volver a seleccionar el mismo archivo
         e.target.value = '';
     };
 
 
-
-    // =====================================================
-    // SELECCIONAR FOTO AL EDITAR
-    // =====================================================
-
+    // Esta función abre el recortador al cambiar una fotografía
     const handleEditPhoto = (
         e: ChangeEvent<HTMLInputElement>
     ) => {
 
-        // Obtiene el archivo seleccionado
-        const file = e.target.files?.[0];
+        const file =
+            e.target.files?.[0];
 
         if (!file) return;
 
 
-        // Elimina una URL temporal anterior
         if (cropSource) {
-            URL.revokeObjectURL(cropSource);
+            URL.revokeObjectURL(
+                cropSource
+            );
         }
 
 
-        // Crea la vista temporal
         const imageUrl =
             URL.createObjectURL(file);
 
 
-        // Envía la imagen al recortador
-        setCropSource(imageUrl);
+        setCropSource(
+            imageUrl
+        );
 
-        // Indica que estamos editando
-        setPhotoMode('edit');
+        setPhotoMode(
+            'edit'
+        );
 
-
-        // Reinicia posición y zoom
         setCrop({
             x: 0,
             y: 0,
@@ -309,245 +340,253 @@ export default function Index({
 
         setZoom(1);
 
-        setCroppedAreaPixels(null);
+        setCroppedAreaPixels(
+            null
+        );
 
-        // Abre el recortador
-        setShowCropper(true);
+        setShowCropper(
+            true
+        );
 
 
-        // Permite seleccionar nuevamente
-        // el mismo archivo
         e.target.value = '';
     };
 
 
-
-    // =====================================================
-    // OBTENER ÁREA SELECCIONADA DEL RECORTADOR
-    // =====================================================
-
+    // Esta función guarda la parte seleccionada de la fotografía
     const onCropComplete = (
         _croppedArea: Area,
         croppedPixels: Area
     ) => {
 
-        // Guarda las coordenadas exactas
-        // que posteriormente recortaremos
-        setCroppedAreaPixels(croppedPixels);
+        setCroppedAreaPixels(
+            croppedPixels
+        );
     };
 
 
+    // Esta función genera la fotografía final después de recortarla
+    const useCroppedPhoto =
+        async () => {
 
-    // =====================================================
-    // USAR FOTOGRAFÍA RECORTADA
-    // =====================================================
-
-    const useCroppedPhoto = async () => {
-
-        // Deben existir imagen y coordenadas
-        if (!cropSource || !croppedAreaPixels) {
-            return;
-        }
-
-
-        try {
-
-            // Genera un Blob solamente con
-            // la parte seleccionada
-            const blob =
-                await getCroppedImage(
-                    cropSource,
-                    croppedAreaPixels
-                );
+            if (
+                !cropSource ||
+                !croppedAreaPixels
+            ) {
+                return;
+            }
 
 
-            // Convierte el Blob en un archivo JPG
-            const file = new File(
-                [blob],
-                `perfil-${Date.now()}.jpg`,
-                {
-                    type: 'image/jpeg',
-                }
-            );
+            try {
+
+                const blob =
+                    await getCroppedImage(
+                        cropSource,
+                        croppedAreaPixels
+                    );
 
 
-            // Dirección temporal para la vista previa
-            const preview =
-                URL.createObjectURL(blob);
+                const file =
+                    new File(
+                        [blob],
+                        `perfil-${Date.now()}.jpg`,
+                        {
+                            type:
+                                'image/jpeg',
+                        }
+                    );
 
 
+                const preview =
+                    URL.createObjectURL(
+                        blob
+                    );
 
-            // Si estamos registrando un usuario
-            if (photoMode === 'create') {
 
-                // Libera una vista previa anterior
-                if (photoPreview) {
-                    URL.revokeObjectURL(
+                // Guarda la fotografía en el formulario de registro
+                if (
+                    photoMode ===
+                    'create'
+                ) {
+
+                    if (
                         photoPreview
+                    ) {
+                        URL.revokeObjectURL(
+                            photoPreview
+                        );
+                    }
+
+
+                    createForm.setData(
+                        'photo',
+                        file
+                    );
+
+
+                    setPhotoPreview(
+                        preview
                     );
                 }
 
-                // Guarda la foto dentro del formulario
-                createForm.setData(
-                    'photo',
-                    file
-                );
 
-                // Muestra la vista previa
-                setPhotoPreview(preview);
-            }
+                // Guarda la fotografía en el formulario de edición
+                if (
+                    photoMode ===
+                    'edit'
+                ) {
 
-
-
-            // Si estamos editando un usuario
-            if (photoMode === 'edit') {
-
-                // Libera la vista anterior
-                if (editPhotoPreview) {
-                    URL.revokeObjectURL(
+                    if (
                         editPhotoPreview
+                    ) {
+                        URL.revokeObjectURL(
+                            editPhotoPreview
+                        );
+                    }
+
+
+                    setData(
+                        'photo',
+                        file
+                    );
+
+
+                    setEditPhotoPreview(
+                        preview
                     );
                 }
 
-                // Guarda la fotografía en el formulario
-                setData(
-                    'photo',
-                    file
+
+                URL.revokeObjectURL(
+                    cropSource
                 );
 
-                // Muestra la nueva fotografía
-                setEditPhotoPreview(preview);
+
+                setCropSource(null);
+
+                setShowCropper(false);
+
+                setZoom(1);
+
+                setCroppedAreaPixels(
+                    null
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Error al recortar la fotografía:',
+                    error
+                );
             }
+        };
 
 
-            // Libera la imagen original
-            URL.revokeObjectURL(cropSource);
-
-            // Cierra y limpia el recortador
-            setCropSource(null);
-            setShowCropper(false);
-            setZoom(1);
-            setCroppedAreaPixels(null);
-
-        } catch (error) {
-
-            // Si ocurre un error aparece en consola
-            console.error(
-                'Error al recortar la fotografía:',
-                error
-            );
-        }
-    };
-
-
-
-    // =====================================================
-    // CANCELAR RECORTE
-    // =====================================================
-
+    // Esta función cierra el recortador sin utilizar la foto
     const cancelCrop = () => {
 
-        // Libera la imagen temporal
         if (cropSource) {
-            URL.revokeObjectURL(cropSource);
+
+            URL.revokeObjectURL(
+                cropSource
+            );
         }
 
-        // Limpia todos los datos del recortador
+
         setCropSource(null);
+
         setShowCropper(false);
+
         setZoom(1);
-        setCroppedAreaPixels(null);
+
+        setCroppedAreaPixels(
+            null
+        );
     };
 
 
-
-    // =====================================================
-    // CERRAR FORMULARIO DE REGISTRO
-    // =====================================================
-
+    // Esta función limpia y cierra el formulario de registro
     const closeCreateUser = () => {
 
-        // Cierra el modal
-        setShowCreateUser(false);
+        setShowCreateUser(
+            false
+        );
 
 
-        // Libera la vista previa
         if (photoPreview) {
-            URL.revokeObjectURL(photoPreview);
+
+            URL.revokeObjectURL(
+                photoPreview
+            );
         }
 
 
-        // Limpia fotografía y formulario
-        setPhotoPreview(null);
+        setPhotoPreview(
+            null
+        );
+
 
         createForm.reset();
+
         createForm.clearErrors();
     };
 
 
-
-    // =====================================================
-    // REGISTRAR USUARIO
-    // =====================================================
-
+    // Esta función envía un usuario nuevo a Laravel
     const submitCreateUser = (
         e: FormEvent
     ) => {
 
-        // Evita recargar la página completa
         e.preventDefault();
 
 
-        // Envía los datos a Laravel
-        createForm.post('/usuarios', {
+        createForm.post(
+            '/usuarios',
+            {
+                // FormData permite enviar la fotografía
+                forceFormData: true,
 
-            // Necesario porque enviamos archivos
-            forceFormData: true,
+                preserveScroll: true,
 
-            // Mantiene la posición de la pantalla
-            preserveScroll: true,
+                onSuccess: () => {
 
-
-            // Si Laravel guarda correctamente
-            onSuccess: () => {
-
-                // Limpia y cierra el formulario
-                closeCreateUser();
-            },
-        });
+                    closeCreateUser();
+                },
+            }
+        );
     };
 
 
-
-    // =====================================================
-    // ABRIR MODO EDICIÓN
-    // =====================================================
-
+    // Esta función coloca los datos actuales dentro del formulario de edición
     const startEditing = () => {
 
-        // Debe existir un usuario seleccionado
-        if (!selectedUser) return;
+        if (!selectedUser) {
+            return;
+        }
 
 
-        // Limpia errores anteriores
         clearErrors();
 
 
-        // Elimina una vista previa anterior
-        if (editPhotoPreview) {
+        if (
+            editPhotoPreview
+        ) {
+
             URL.revokeObjectURL(
                 editPhotoPreview
             );
         }
 
 
-        setEditPhotoPreview(null);
+        setEditPhotoPreview(
+            null
+        );
 
 
-        // Coloca los datos actuales
-        // dentro del formulario de edición
         setData({
-            _method: 'patch',
+
+            _method:
+                'patch',
 
             first_name:
                 selectedUser.first_name,
@@ -559,52 +598,64 @@ export default function Index({
                 selectedUser.email,
 
             company_id:
-                String(selectedUser.company.id),
+                String(
+                    selectedUser
+                        .company
+                        .id
+                ),
 
             department_id:
-                String(selectedUser.department.id),
+                String(
+                    selectedUser
+                        .department
+                        .id
+                ),
 
-            photo: null,
+            // Muestra el puesto actual al editar
+            position:
+                selectedUser.position ??
+                '',
+
+            photo:
+                null,
         });
 
 
-        // Cambia el modal a modo edición
-        setIsEditing(true);
+        setIsEditing(
+            true
+        );
     };
 
 
-
-    // =====================================================
-    // CANCELAR EDICIÓN
-    // =====================================================
-
+    // Esta función cancela los cambios realizados
     const cancelEditing = () => {
 
-        // Si se seleccionó otra fotografía,
-        // elimina solamente la vista previa
-        if (editPhotoPreview) {
+        if (
+            editPhotoPreview
+        ) {
+
             URL.revokeObjectURL(
                 editPhotoPreview
             );
         }
 
 
-        setEditPhotoPreview(null);
+        setEditPhotoPreview(
+            null
+        );
 
-        // Limpia formulario y errores
+
         reset();
+
         clearErrors();
 
-        // Regresa al modo información
-        setIsEditing(false);
+        setIsEditing(
+            false
+        );
     };
 
 
-
-    // =====================================================
-    // GUARDAR CAMBIOS DEL USUARIO
-    // =====================================================
-
+    // Esta función guarda los cambios realizados al usuario
     const submit = (
         e: FormEvent
     ) => {
@@ -612,247 +663,375 @@ export default function Index({
         e.preventDefault();
 
 
-        if (!selectedUser) return;
+        if (!selectedUser) {
+            return;
+        }
 
 
-        // Se usa POST con _method PATCH
-        // porque estamos enviando una fotografía
         postEdit(
             `/usuarios/${selectedUser.id}`,
             {
-
+                // Permite enviar la fotografía junto con los demás datos
                 forceFormData: true,
 
                 preserveScroll: true,
 
-                // Recarga los nuevos datos
                 preserveState: false,
-
 
                 onSuccess: () => {
 
-                    // Libera vista previa
-                    if (editPhotoPreview) {
+                    if (
+                        editPhotoPreview
+                    ) {
+
                         URL.revokeObjectURL(
                             editPhotoPreview
                         );
                     }
 
 
-                    setEditPhotoPreview(null);
+                    setEditPhotoPreview(
+                        null
+                    );
 
-                    // Cierra edición
-                    setIsEditing(false);
-                    setSelectedUser(null);
+                    setIsEditing(
+                        false
+                    );
+
+                    setSelectedUser(
+                        null
+                    );
                 },
             }
         );
     };
 
 
-
-    // =====================================================
-    // CERRAR MODAL DEL USUARIO
-    // =====================================================
-
+    // Esta función cierra la información del usuario
     const closeDialog = () => {
 
-        // Libera una fotografía temporal
-        if (editPhotoPreview) {
+        if (
+            editPhotoPreview
+        ) {
+
             URL.revokeObjectURL(
                 editPhotoPreview
             );
         }
 
 
-        setEditPhotoPreview(null);
+        setEditPhotoPreview(
+            null
+        );
 
-        // Quita usuario seleccionado
-        setSelectedUser(null);
+        setSelectedUser(
+            null
+        );
 
-        // Sale del modo edición
-        setIsEditing(false);
+        setIsEditing(
+            false
+        );
 
-        // Limpia formulario
         reset();
+
         clearErrors();
     };
 
 
-
-    // =====================================================
-    // ABRIR CONFIRMACIÓN DE ELIMINAR
-    // =====================================================
-
+    // Esta función abre la confirmación para eliminar
     const deleteUser = () => {
 
-        if (!selectedUser) return;
+        if (!selectedUser) {
+            return;
+        }
 
-        // Abre AlertDialog
-        setShowDeleteConfirm(true);
+
+        setShowDeleteConfirm(
+            true
+        );
     };
 
 
-
-    // =====================================================
-    // ELIMINAR USUARIO
-    // =====================================================
-
+    // Esta función elimina definitivamente el usuario
     const confirmDelete = () => {
 
-        if (!selectedUser) return;
+        if (!selectedUser) {
+            return;
+        }
 
 
-        // Envía DELETE a Laravel
         router.delete(
             `/usuarios/${selectedUser.id}`,
             {
-
-                preserveScroll: true,
-
+                preserveScroll:
+                    true,
 
                 onSuccess: () => {
 
-                    // Cierra todos los modales
-                    setShowDeleteConfirm(false);
+                    setShowDeleteConfirm(
+                        false
+                    );
 
-                    setSelectedUser(null);
+                    setSelectedUser(
+                        null
+                    );
 
-                    setIsEditing(false);
+                    setIsEditing(
+                        false
+                    );
                 },
             }
         );
     };
 
 
+    // Esta función cambia el orden de una columna
+    const handleSort = (
+        field: SortField
+    ) => {
 
-    // =====================================================
-    // FILTRAR USUARIOS
-    // =====================================================
+        // Si se presiona la misma columna cambia ascendente por descendente
+        if (
+            sortField === field
+        ) {
 
-    const filteredUsers = users.filter(
-        (user) => {
+            setSortDirection(
+                sortDirection ===
+                'asc'
+                    ? 'desc'
+                    : 'asc'
+            );
 
-            // Convierte búsqueda a minúsculas
-            // para ignorar mayúsculas/minúsculas
-            const search =
-                searchTerm
-                    .trim()
-                    .toLowerCase();
+        } else {
 
+            // Una columna nueva comienza de forma ascendente
+            setSortField(
+                field
+            );
 
-            // Busca por nombre completo,
-            // correo o departamento
-            const matchesSearch =
-                `${user.first_name} ${user.last_name}`
-                    .toLowerCase()
-                    .includes(search) ||
-
-                user.email
-                    .toLowerCase()
-                    .includes(search) ||
-
-                user.department.name
-                    .toLowerCase()
-                    .includes(search);
-
-
-            // Comprueba el departamento seleccionado
-            const matchesDepartment =
-                departmentFilter === '' ||
-
-                String(user.department.id) ===
-                    departmentFilter;
-
-
-            // Solo muestra usuarios
-            // que cumplan ambos filtros
-            return (
-                matchesSearch &&
-                matchesDepartment
+            setSortDirection(
+                'asc'
             );
         }
-    );
 
 
-
-    // =====================================================
-    // PAGINACIÓN
-    // =====================================================
-
-    // Calcula cuántas páginas existen
-    const totalPages = Math.max(
-        1,
-        Math.ceil(
-            filteredUsers.length /
-                usersPerPage
-        )
-    );
+        setCurrentPage(
+            1
+        );
+    };
 
 
-    // Si después de eliminar un usuario
-    // la página actual ya no existe,
-    // regresa a la última disponible
+    // Esta parte busca usuarios por varios datos
+    const filteredUsers =
+        users.filter(
+            (user) => {
+
+                const search =
+                    searchTerm
+                        .trim()
+                        .toLowerCase();
+
+
+                const matchesSearch =
+
+                    // Busca por nombre completo
+                    `${user.first_name} ${user.last_name}`
+                        .toLowerCase()
+                        .includes(search)
+
+                    ||
+
+                    // Busca por correo
+                    user.email
+                        .toLowerCase()
+                        .includes(search)
+
+                    ||
+
+                    // Busca por departamento
+                    user.department.name
+                        .toLowerCase()
+                        .includes(search)
+
+                    ||
+
+                    // También permite buscar utilizando el puesto
+                    (
+                        user.position ??
+                        ''
+                    )
+                        .toLowerCase()
+                        .includes(search);
+
+
+                // Comprueba si se seleccionó un departamento
+                const matchesDepartment =
+                    departmentFilter ===
+                        ''
+
+                    ||
+
+                    String(
+                        user.department.id
+                    ) ===
+                        departmentFilter;
+
+
+                return (
+                    matchesSearch &&
+                    matchesDepartment
+                );
+            }
+        );
+
+
+    // Esta parte ordena los usuarios antes de mostrarlos
+    const sortedUsers =
+        [...filteredUsers]
+            .sort(
+                (a, b) => {
+
+                    let valueA =
+                        '';
+
+                    let valueB =
+                        '';
+
+
+                    if (
+                        sortField ===
+                        'name'
+                    ) {
+
+                        valueA =
+                            `${a.first_name} ${a.last_name}`;
+
+                        valueB =
+                            `${b.first_name} ${b.last_name}`;
+                    }
+
+
+                    if (
+                        sortField ===
+                        'email'
+                    ) {
+
+                        valueA =
+                            a.email;
+
+                        valueB =
+                            b.email;
+                    }
+
+
+                    if (
+                        sortField ===
+                        'department'
+                    ) {
+
+                        valueA =
+                            a.department.name;
+
+                        valueB =
+                            b.department.name;
+                    }
+
+
+                    const result =
+                        valueA.localeCompare(
+                            valueB,
+                            'es',
+                            {
+                                sensitivity:
+                                    'base',
+                            }
+                        );
+
+
+                    return (
+                        sortDirection ===
+                        'asc'
+                            ? result
+                            : -result
+                    );
+                }
+            );
+
+
+    // Calcula la cantidad total de páginas
+    const totalPages =
+        Math.max(
+            1,
+            Math.ceil(
+                sortedUsers.length /
+                    usersPerPage
+            )
+        );
+
+
+    // Evita quedar en una página que ya no existe
     useEffect(() => {
 
-        if (currentPage > totalPages) {
-            setCurrentPage(totalPages);
+        if (
+            currentPage >
+            totalPages
+        ) {
+
+            setCurrentPage(
+                totalPages
+            );
         }
 
-    }, [currentPage, totalPages]);
+    }, [
+        currentPage,
+        totalPages,
+    ]);
 
 
-    // Posición desde donde inicia la página
+    // Calcula desde qué usuario inicia la página
     const startIndex =
         (currentPage - 1) *
         usersPerPage;
 
 
-    // Obtiene únicamente los 10 usuarios
-    // correspondientes a la página actual
+    // Obtiene únicamente los usuarios de la página actual
     const visibleUsers =
-        filteredUsers.slice(
+        sortedUsers.slice(
             startIndex,
-            startIndex + usersPerPage
+            startIndex +
+                usersPerPage
         );
 
 
-
-    // =====================================================
-    // FORMATEAR FECHA
-    // =====================================================
-
+    // Esta función muestra la fecha en formato de Guatemala
     const formatDate = (
         date: string
     ) => {
 
-        // Convierte la fecha al formato de Guatemala
         return new Date(
             date
         ).toLocaleString(
             'es-GT',
             {
-                dateStyle: 'medium',
-                timeStyle: 'short',
+                dateStyle:
+                    'medium',
+
+                timeStyle:
+                    'short',
             }
         );
     };
 
 
-
-    // =====================================================
-    // INTERFAZ
-    // =====================================================
-
     return (
         <>
 
-            {/* ============================================= */}
-            {/* MODAL PARA AJUSTAR LA FOTOGRAFÍA */}
-            {/* ============================================= */}
-
+            {/* Ventana para mover, acercar y recortar la fotografía */}
             <Dialog
-                open={showCropper}
+                open={
+                    showCropper
+                }
+
                 onOpenChange={(open) => {
 
                     if (!open) {
@@ -872,39 +1051,42 @@ export default function Index({
                     </DialogHeader>
 
 
-                    {/* Área donde se mueve la imagen */}
+                    {/* Aquí se puede mover la fotografía con el mouse */}
                     <div className="relative h-80 w-full overflow-hidden rounded-lg bg-black">
 
                         {cropSource && (
 
                             <Cropper
-                                image={cropSource}
+                                image={
+                                    cropSource
+                                }
 
-                                // Posición de la fotografía
-                                crop={crop}
+                                crop={
+                                    crop
+                                }
 
-                                // Nivel de acercamiento
-                                zoom={zoom}
+                                zoom={
+                                    zoom
+                                }
 
-                                // Siempre genera una foto 1:1
-                                aspect={1}
+                                aspect={
+                                    1
+                                }
 
-                                // Muestra visualmente un círculo
                                 cropShape="round"
 
-                                showGrid={false}
+                                showGrid={
+                                    false
+                                }
 
-                                // Guarda la nueva posición
                                 onCropChange={
                                     setCrop
                                 }
 
-                                // Guarda el nuevo zoom
                                 onZoomChange={
                                     setZoom
                                 }
 
-                                // Obtiene las coordenadas finales
                                 onCropComplete={
                                     onCropComplete
                                 }
@@ -915,7 +1097,7 @@ export default function Index({
                     </div>
 
 
-                    {/* Control para acercar o alejar */}
+                    {/* Este control permite acercar o alejar la foto */}
                     <div className="space-y-2">
 
                         <label className="text-sm font-medium">
@@ -926,11 +1108,21 @@ export default function Index({
                         <input
                             type="range"
 
-                            min={1}
-                            max={3}
-                            step={0.1}
+                            min={
+                                1
+                            }
 
-                            value={zoom}
+                            max={
+                                3
+                            }
+
+                            step={
+                                0.1
+                            }
+
+                            value={
+                                zoom
+                            }
 
                             onChange={(e) =>
                                 setZoom(
@@ -946,9 +1138,9 @@ export default function Index({
                     </div>
 
 
-                    {/* Botones del recortador */}
                     <div className="flex justify-end gap-3 pt-3">
 
+                        {/* Este botón cierra el recortador sin utilizar la foto */}
                         <button
                             type="button"
 
@@ -962,6 +1154,7 @@ export default function Index({
                         </button>
 
 
+                        {/* Este botón utiliza la parte seleccionada de la fotografía */}
                         <button
                             type="button"
 
@@ -981,28 +1174,17 @@ export default function Index({
             </Dialog>
 
 
-
-            {/* ============================================= */}
-            {/* PÁGINA PRINCIPAL */}
-            {/* ============================================= */}
-
             <div className="flex min-h-screen bg-gray-50">
 
-                {/* Menú lateral */}
                 <AppSidebar />
 
 
-                {/* Contenido principal */}
                 <main className="min-w-0 flex-1 p-8">
 
                     <Head title="Personal" />
 
 
-
-                    {/* ===================================== */}
-                    {/* ENCABEZADO */}
-                    {/* ===================================== */}
-
+                    {/* Encabezado de la página */}
                     <div className="mb-6 flex items-center justify-between">
 
                         <div>
@@ -1018,7 +1200,7 @@ export default function Index({
                         </div>
 
 
-                        {/* Abre el modal para registrar */}
+                        {/* Este botón abre el formulario para registrar un usuario */}
                         <button
                             type="button"
 
@@ -1036,20 +1218,18 @@ export default function Index({
                     </div>
 
 
-
-                    {/* ===================================== */}
-                    {/* BUSCADOR Y FILTRO */}
-                    {/* ===================================== */}
-
+                    {/* Buscador y filtro */}
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row">
 
-                        {/* Busca por nombre, correo o departamento */}
+                        {/* Este campo permite buscar usuarios por nombre, correo, departamento o puesto */}
                         <input
                             type="text"
 
-                            placeholder="Buscar por nombre, correo o departamento..."
+                            placeholder="Buscar por nombre, correo, departamento o puesto..."
 
-                            value={searchTerm}
+                            value={
+                                searchTerm
+                            }
 
                             onChange={(e) => {
 
@@ -1057,16 +1237,16 @@ export default function Index({
                                     e.target.value
                                 );
 
-                                // Cada nueva búsqueda
-                                // vuelve a la página 1
-                                setCurrentPage(1);
+                                setCurrentPage(
+                                    1
+                                );
                             }}
 
                             className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-gray-500 sm:max-w-md"
                         />
 
 
-                        {/* Filtra usuarios por departamento */}
+                        {/* Este selector muestra solamente usuarios del departamento elegido */}
                         <select
                             value={
                                 departmentFilter
@@ -1078,7 +1258,9 @@ export default function Index({
                                     e.target.value
                                 );
 
-                                setCurrentPage(1);
+                                setCurrentPage(
+                                    1
+                                );
                             }}
 
                             className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm"
@@ -1090,7 +1272,9 @@ export default function Index({
 
 
                             {departments.map(
-                                (department) => (
+                                (
+                                    department
+                                ) => (
 
                                     <option
                                         key={
@@ -1105,6 +1289,7 @@ export default function Index({
                                             department.name
                                         }
                                     </option>
+
                                 )
                             )}
 
@@ -1113,11 +1298,7 @@ export default function Index({
                     </div>
 
 
-
-                    {/* ===================================== */}
-                    {/* TABLA DE USUARIOS */}
-                    {/* ===================================== */}
-
+                    {/* Tabla de usuarios */}
                     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 
                         <div className="overflow-x-auto">
@@ -1128,16 +1309,102 @@ export default function Index({
 
                                     <TableRow className="bg-gray-50">
 
-                                        <TableHead className="font-semibold text-gray-600">
-                                            Nombre Completo
+                                        <TableHead>
+
+                                            {/* Este botón ordena la tabla utilizando el nombre */}
+                                            <button
+                                                type="button"
+
+                                                onClick={() =>
+                                                    handleSort(
+                                                        'name'
+                                                    )
+                                                }
+
+                                                className="flex items-center gap-2 font-semibold text-gray-600 hover:text-black"
+                                            >
+                                                Nombre Completo
+
+                                                {sortField ===
+                                                    'name' && (
+
+                                                    <span>
+                                                        {sortDirection ===
+                                                        'asc'
+                                                            ? '↑'
+                                                            : '↓'}
+                                                    </span>
+
+                                                )}
+
+                                            </button>
+
                                         </TableHead>
 
-                                        <TableHead className="font-semibold text-gray-600">
-                                            Correo Electrónico
+
+                                        <TableHead>
+
+                                            {/* Este botón ordena utilizando el correo */}
+                                            <button
+                                                type="button"
+
+                                                onClick={() =>
+                                                    handleSort(
+                                                        'email'
+                                                    )
+                                                }
+
+                                                className="flex items-center gap-2 font-semibold text-gray-600 hover:text-black"
+                                            >
+                                                Correo Electrónico
+
+                                                {sortField ===
+                                                    'email' && (
+
+                                                    <span>
+                                                        {sortDirection ===
+                                                        'asc'
+                                                            ? '↑'
+                                                            : '↓'}
+                                                    </span>
+
+                                                )}
+
+                                            </button>
+
                                         </TableHead>
 
-                                        <TableHead className="font-semibold text-gray-600">
-                                            Departamento
+
+                                        <TableHead>
+
+                                            {/* Este botón ordena utilizando el departamento */}
+                                            <button
+                                                type="button"
+
+                                                onClick={() =>
+                                                    handleSort(
+                                                        'department'
+                                                    )
+                                                }
+
+                                                className="flex items-center gap-2 font-semibold text-gray-600 hover:text-black"
+                                            >
+                                                Departamento
+
+                                                {sortField ===
+                                                    'department' && (
+
+                                                    <span>
+                                                        {sortDirection ===
+                                                        'asc'
+                                                            ? '↑'
+                                                            : '↓'}
+                                                    </span>
+
+                                                )}
+
+                                            </button>
+
                                         </TableHead>
 
                                     </TableRow>
@@ -1147,14 +1414,17 @@ export default function Index({
 
                                 <TableBody>
 
-
-                                    {/* Si no se encuentra ningún usuario */}
-                                    {visibleUsers.length === 0 && (
+                                    {/* Este mensaje aparece cuando no hay resultados */}
+                                    {visibleUsers.length ===
+                                        0 && (
 
                                         <TableRow>
 
                                             <TableCell
-                                                colSpan={3}
+                                                colSpan={
+                                                    3
+                                                }
+
                                                 className="py-8 text-center text-gray-500"
                                             >
                                                 No se encontraron usuarios.
@@ -1165,110 +1435,108 @@ export default function Index({
                                     )}
 
 
-
-                                    {/* Recorre solamente los usuarios visibles */}
                                     {visibleUsers.map(
-                                        (user) => (
+                                        (
+                                            user
+                                        ) => (
 
-                                            <TableRow
-                                                key={user.id}
+                                        <TableRow
+                                            key={
+                                                user.id
+                                            }
 
-                                                // Abre información del usuario
-                                                onClick={() => {
+                                            onClick={() => {
 
-                                                    setSelectedUser(
-                                                        user
-                                                    );
+                                                setSelectedUser(
+                                                    user
+                                                );
 
-                                                    setIsEditing(
-                                                        false
-                                                    );
-                                                }}
+                                                setIsEditing(
+                                                    false
+                                                );
+                                            }}
 
-                                                className="cursor-pointer transition-colors hover:bg-gray-50"
-                                            >
+                                            className="cursor-pointer transition-colors hover:bg-gray-50"
+                                        >
 
+                                            <TableCell className="font-medium text-gray-900">
 
-                                                {/* Foto y nombre */}
-                                                <TableCell className="font-medium text-gray-900">
+                                                <div className="flex items-center gap-3">
 
-                                                    <div className="flex items-center gap-3">
+                                                    {user.photo_path ? (
 
+                                                        <img
+                                                            src={`/usuarios/${user.id}/foto?v=${encodeURIComponent(
+                                                                user.updated_at
+                                                            )}`}
 
-                                                        {/* Si tiene foto */}
-                                                        {user.photo_path ? (
+                                                            alt={`${user.first_name} ${user.last_name}`}
 
-                                                            <img
-                                                                src={`/usuarios/${user.id}/foto?v=${encodeURIComponent(
-                                                                    user.updated_at
-                                                                )}`}
+                                                            className="h-10 w-10 rounded-full border object-cover"
+                                                        />
 
-                                                                alt={`${user.first_name} ${user.last_name}`}
+                                                    ) : (
 
-                                                                className="h-10 w-10 rounded-full border object-cover"
-                                                            />
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-500">
 
-                                                        ) : (
+                                                            {
+                                                                user.first_name.charAt(
+                                                                    0
+                                                                )
+                                                            }
 
-                                                            // Si no tiene foto muestra iniciales
-                                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-500">
+                                                            {
+                                                                user.last_name.charAt(
+                                                                    0
+                                                                )
+                                                            }
 
-                                                                {
-                                                                    user.first_name.charAt(
-                                                                        0
-                                                                    )
-                                                                }
+                                                        </div>
 
-                                                                {
-                                                                    user.last_name.charAt(
-                                                                        0
-                                                                    )
-                                                                }
-
-                                                            </div>
-
-                                                        )}
+                                                    )}
 
 
-                                                        <span>
-                                                            {user.first_name}{' '}
-                                                            {user.last_name}
-                                                        </span>
-
-                                                    </div>
-
-                                                </TableCell>
-
-
-
-                                                {/* Correo */}
-                                                <TableCell className="text-gray-500">
-
-                                                    {
-                                                        user.email
-                                                    }
-
-                                                </TableCell>
-
-
-
-                                                {/* Departamento */}
-                                                <TableCell>
-
-                                                    <span className="rounded-md bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-700">
+                                                    <span>
 
                                                         {
-                                                            user.department.name
+                                                            user.first_name
+                                                        }{' '}
+
+                                                        {
+                                                            user.last_name
                                                         }
 
                                                     </span>
 
-                                                </TableCell>
+                                                </div>
 
-                                            </TableRow>
+                                            </TableCell>
 
-                                        )
-                                    )}
+
+                                            <TableCell className="text-gray-500">
+
+                                                {
+                                                    user.email
+                                                }
+
+                                            </TableCell>
+
+
+                                            <TableCell>
+
+                                                <span className="rounded-md bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-700">
+
+                                                    {
+                                                        user.department.name
+                                                    }
+
+                                                </span>
+
+                                            </TableCell>
+
+                                        </TableRow>
+
+                                    ))}
 
                                 </TableBody>
 
@@ -1279,34 +1547,27 @@ export default function Index({
                     </div>
 
 
-
-                    {/* ===================================== */}
-                    {/* PAGINACIÓN */}
-                    {/* ===================================== */}
-
+                    {/* Esta parte permite cambiar entre páginas */}
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                        {/* Cantidad de resultados */}
                         <p className="text-sm text-gray-500">
 
                             Mostrando{' '}
 
-                            {
-                                filteredUsers.length === 0
-                                    ? 0
-                                    : startIndex + 1
-                            }
+                            {filteredUsers.length ===
+                            0
+                                ? 0
+                                : startIndex +
+                                  1}
 
                             {' - '}
 
-                            {
-                                Math.min(
-                                    startIndex +
-                                        usersPerPage,
+                            {Math.min(
+                                startIndex +
+                                    usersPerPage,
 
-                                    filteredUsers.length
-                                )
-                            }
+                                filteredUsers.length
+                            )}
 
                             {' de '}
 
@@ -1319,23 +1580,25 @@ export default function Index({
                         </p>
 
 
-                        {/* Botones de páginas */}
                         <div className="flex items-center gap-2">
 
-
-                            {/* Regresa una página */}
+                            {/* Este botón muestra la página anterior */}
                             <button
                                 type="button"
 
                                 disabled={
-                                    currentPage === 1
+                                    currentPage ===
+                                    1
                                 }
 
                                 onClick={() =>
                                     setCurrentPage(
-                                        (page) =>
+                                        (
+                                            page
+                                        ) =>
                                             Math.max(
-                                                page - 1,
+                                                page -
+                                                    1,
                                                 1
                                             )
                                     )
@@ -1347,7 +1610,6 @@ export default function Index({
                             </button>
 
 
-                            {/* Página actual */}
                             <span className="px-2 text-sm text-gray-600">
 
                                 Página {currentPage} de {totalPages}
@@ -1355,7 +1617,7 @@ export default function Index({
                             </span>
 
 
-                            {/* Avanza una página */}
+                            {/* Este botón muestra la página siguiente */}
                             <button
                                 type="button"
 
@@ -1366,9 +1628,13 @@ export default function Index({
 
                                 onClick={() =>
                                     setCurrentPage(
-                                        (page) =>
+                                        (
+                                            page
+                                        ) =>
                                             Math.min(
-                                                page + 1,
+                                                page +
+                                                    1,
+
                                                 totalPages
                                             )
                                     )
@@ -1384,13 +1650,11 @@ export default function Index({
                     </div>
 
 
-
-                    {/* ===================================== */}
-                    {/* MODAL REGISTRAR USUARIO */}
-                    {/* ===================================== */}
-
+                    {/* Ventana para registrar un usuario */}
                     <Dialog
-                        open={showCreateUser}
+                        open={
+                            showCreateUser
+                        }
 
                         onOpenChange={(open) => {
 
@@ -1419,12 +1683,10 @@ export default function Index({
                                 className="space-y-5"
                             >
 
-
                                 {/* Fotografía */}
                                 <div className="flex flex-col items-center">
 
-
-                                    {/* Al hacer clic abre selector de archivos */}
+                                    {/* Este botón permite seleccionar una fotografía */}
                                     <label
                                         htmlFor="create-photo"
 
@@ -1446,7 +1708,6 @@ export default function Index({
                                                 />
 
 
-                                                {/* Texto que aparece al pasar el mouse */}
                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
 
                                                     <span className="text-sm font-medium text-white">
@@ -1468,7 +1729,6 @@ export default function Index({
                                     </label>
 
 
-                                    {/* Selector de fotografía oculto */}
                                     <input
                                         id="create-photo"
 
@@ -1491,15 +1751,12 @@ export default function Index({
                                     </p>
 
 
-                                    {/* Error de fotografía */}
                                     {createForm.errors.photo && (
 
                                         <p className="mt-1 text-sm text-red-500">
-
                                             {
                                                 createForm.errors.photo
                                             }
-
                                         </p>
 
                                     )}
@@ -1507,12 +1764,9 @@ export default function Index({
                                 </div>
 
 
-
                                 {/* Nombre y apellido */}
                                 <div className="grid gap-4 sm:grid-cols-2">
 
-
-                                    {/* Nombre */}
                                     <div>
 
                                         <label className="text-sm font-medium">
@@ -1553,8 +1807,6 @@ export default function Index({
                                     </div>
 
 
-
-                                    {/* Apellido */}
                                     <div>
 
                                         <label className="text-sm font-medium">
@@ -1595,7 +1847,6 @@ export default function Index({
                                     </div>
 
                                 </div>
-
 
 
                                 {/* Correo */}
@@ -1639,7 +1890,6 @@ export default function Index({
                                 </div>
 
 
-
                                 {/* Contraseña */}
                                 <div>
 
@@ -1681,12 +1931,9 @@ export default function Index({
                                 </div>
 
 
-
                                 {/* Empresa y departamento */}
                                 <div className="grid gap-4 sm:grid-cols-2">
 
-
-                                    {/* Empresa */}
                                     <div>
 
                                         <label className="text-sm font-medium">
@@ -1715,24 +1962,25 @@ export default function Index({
 
 
                                             {companies.map(
-                                                (company) => (
+                                                (
+                                                    company
+                                                ) => (
 
-                                                    <option
-                                                        key={
-                                                            company.id
-                                                        }
+                                                <option
+                                                    key={
+                                                        company.id
+                                                    }
 
-                                                        value={
-                                                            company.id
-                                                        }
-                                                    >
-                                                        {
-                                                            company.name
-                                                        }
-                                                    </option>
+                                                    value={
+                                                        company.id
+                                                    }
+                                                >
+                                                    {
+                                                        company.name
+                                                    }
+                                                </option>
 
-                                                )
-                                            )}
+                                            ))}
 
                                         </select>
 
@@ -1752,8 +2000,6 @@ export default function Index({
                                     </div>
 
 
-
-                                    {/* Departamento */}
                                     <div>
 
                                         <label className="text-sm font-medium">
@@ -1782,24 +2028,25 @@ export default function Index({
 
 
                                             {departments.map(
-                                                (department) => (
+                                                (
+                                                    department
+                                                ) => (
 
-                                                    <option
-                                                        key={
-                                                            department.id
-                                                        }
+                                                <option
+                                                    key={
+                                                        department.id
+                                                    }
 
-                                                        value={
-                                                            department.id
-                                                        }
-                                                    >
-                                                        {
-                                                            department.name
-                                                        }
-                                                    </option>
+                                                    value={
+                                                        department.id
+                                                    }
+                                                >
+                                                    {
+                                                        department.name
+                                                    }
+                                                </option>
 
-                                                )
-                                            )}
+                                            ))}
 
                                         </select>
 
@@ -1821,12 +2068,52 @@ export default function Index({
                                 </div>
 
 
+                                {/* Este campo permite indicar el puesto del usuario */}
+                                <div>
 
-                                {/* Botones de registro */}
+                                    <label className="text-sm font-medium">
+                                        Puesto
+                                    </label>
+
+
+                                    <input
+                                        type="text"
+
+                                        placeholder="Ej. Técnico de Soporte"
+
+                                        value={
+                                            createForm.data.position
+                                        }
+
+                                        onChange={(e) =>
+                                            createForm.setData(
+                                                'position',
+                                                e.target.value
+                                            )
+                                        }
+
+                                        className="mt-1 w-full rounded-md border px-3 py-2"
+                                    />
+
+
+                                    {createForm.errors.position && (
+
+                                        <p className="mt-1 text-sm text-red-500">
+
+                                            {
+                                                createForm.errors.position
+                                            }
+
+                                        </p>
+
+                                    )}
+
+                                </div>
+
+
                                 <div className="flex justify-end gap-3 border-t pt-5">
 
-
-                                    {/* Cierra sin guardar */}
+                                    {/* Este botón cierra el formulario sin registrar */}
                                     <button
                                         type="button"
 
@@ -1840,7 +2127,7 @@ export default function Index({
                                     </button>
 
 
-                                    {/* Envía datos a Laravel */}
+                                    {/* Este botón registra el nuevo usuario */}
                                     <button
                                         type="submit"
 
@@ -1851,11 +2138,9 @@ export default function Index({
                                         className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50"
                                     >
 
-                                        {
-                                            createForm.processing
-                                                ? 'Registrando...'
-                                                : 'Registrar usuario'
-                                        }
+                                        {createForm.processing
+                                            ? 'Registrando...'
+                                            : 'Registrar usuario'}
 
                                     </button>
 
@@ -1868,14 +2153,11 @@ export default function Index({
                     </Dialog>
 
 
-
-                    {/* ===================================== */}
-                    {/* MODAL INFORMACIÓN / EDITAR */}
-                    {/* ===================================== */}
-
+                    {/* Ventana para consultar o editar un usuario */}
                     <Dialog
                         open={
-                            selectedUser !== null
+                            selectedUser !==
+                            null
                         }
 
                         onOpenChange={(open) => {
@@ -1896,28 +2178,22 @@ export default function Index({
 
                                 <DialogTitle className="text-xl">
 
-                                    {
-                                        isEditing
-                                            ? 'Editar usuario'
-                                            : 'Información del usuario'
-                                    }
+                                    {isEditing
+                                        ? 'Editar usuario'
+                                        : 'Información del usuario'}
 
                                 </DialogTitle>
 
                             </DialogHeader>
 
 
-
-                            {/* ================================= */}
-                            {/* INFORMACIÓN DEL USUARIO */}
-                            {/* ================================= */}
-
-                            {selectedUser && !isEditing && (
+                            {/* Información del usuario */}
+                            {selectedUser &&
+                                !isEditing && (
 
                                 <div className="space-y-6">
 
-
-                                    {/* Fotografía del usuario */}
+                                    {/* Fotografía */}
                                     <div className="flex justify-center">
 
                                         {selectedUser.photo_path ? (
@@ -1955,10 +2231,8 @@ export default function Index({
                                     </div>
 
 
-
-                                    {/* Información */}
+                                    {/* Datos del usuario */}
                                     <div className="grid gap-5 sm:grid-cols-2">
-
 
                                         <div>
 
@@ -2035,57 +2309,68 @@ export default function Index({
                                         </div>
 
 
-                                        {/* Fechas */}
-                                        <div className="space-y-5">
+                                        {/* Aquí aparece el puesto del usuario */}
+                                        <div>
 
-                                            <div>
+                                            <p className="text-sm text-gray-500">
+                                                Puesto
+                                            </p>
 
-                                                <p className="text-sm text-gray-500">
-                                                    Creado el
-                                                </p>
+                                            <p className="mt-1 font-medium text-gray-900">
 
-                                                <p className="mt-1 font-medium text-gray-900">
+                                                {
+                                                    selectedUser.position ??
+                                                    'Sin puesto asignado'
+                                                }
 
-                                                    {
-                                                        formatDate(
-                                                            selectedUser.created_at
-                                                        )
-                                                    }
+                                            </p>
 
-                                                </p>
-
-                                            </div>
+                                        </div>
 
 
-                                            <div>
+                                        <div>
 
-                                                <p className="text-sm text-gray-500">
-                                                    Última actualización
-                                                </p>
+                                            <p className="text-sm text-gray-500">
+                                                Creado el
+                                            </p>
 
-                                                <p className="mt-1 font-medium text-gray-900">
+                                            <p className="mt-1 font-medium text-gray-900">
 
-                                                    {
-                                                        formatDate(
-                                                            selectedUser.updated_at
-                                                        )
-                                                    }
+                                                {
+                                                    formatDate(
+                                                        selectedUser.created_at
+                                                    )
+                                                }
 
-                                                </p>
+                                            </p>
 
-                                            </div>
+                                        </div>
+
+
+                                        <div>
+
+                                            <p className="text-sm text-gray-500">
+                                                Última actualización
+                                            </p>
+
+                                            <p className="mt-1 font-medium text-gray-900">
+
+                                                {
+                                                    formatDate(
+                                                        selectedUser.updated_at
+                                                    )
+                                                }
+
+                                            </p>
 
                                         </div>
 
                                     </div>
 
 
-
-                                    {/* Botones */}
                                     <div className="flex justify-between border-t pt-5">
 
-
-                                        {/* Abre confirmación */}
+                                        {/* Este botón abre la confirmación para eliminar */}
                                         <button
                                             type="button"
 
@@ -2099,7 +2384,7 @@ export default function Index({
                                         </button>
 
 
-                                        {/* Activa edición */}
+                                        {/* Este botón permite modificar la información */}
                                         <button
                                             type="button"
 
@@ -2119,102 +2404,83 @@ export default function Index({
                             )}
 
 
-
-                            {/* ================================= */}
-                            {/* EDITAR USUARIO */}
-                            {/* ================================= */}
-
-                            {selectedUser && isEditing && (
+                            {/* Formulario para editar usuario */}
+                            {selectedUser &&
+                                isEditing && (
 
                                 <form
-                                    onSubmit={submit}
+                                    onSubmit={
+                                        submit
+                                    }
 
                                     className="space-y-5"
                                 >
 
-
-                                    {/* Foto editable */}
+                                    {/* Este campo permite cambiar la fotografía */}
                                     <div className="flex flex-col items-center">
 
-
-                                        {/* Foto funciona como botón */}
                                         <label
                                             htmlFor="edit-photo"
 
                                             className="group relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-sm"
                                         >
 
+                                            {editPhotoPreview ||
+                                            selectedUser.photo_path ? (
 
-                                            {
-                                                editPhotoPreview ||
-                                                selectedUser.photo_path
-                                                    ? (
+                                                <>
 
-                                                        <>
+                                                    <img
+                                                        src={
+                                                            editPhotoPreview ??
+                                                            `/usuarios/${selectedUser.id}/foto?v=${encodeURIComponent(
+                                                                selectedUser.updated_at
+                                                            )}`
+                                                        }
 
-                                                            <img
-                                                                src={
-                                                                    editPhotoPreview ??
-                                                                    `/usuarios/${selectedUser.id}/foto?v=${encodeURIComponent(
-                                                                        selectedUser.updated_at
-                                                                    )}`
-                                                                }
+                                                        alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
 
-                                                                alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
-
-                                                                className="h-full w-full object-cover"
-                                                            />
+                                                        className="h-full w-full object-cover"
+                                                    />
 
 
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
 
-                                                                <span className="text-sm font-medium text-white">
-                                                                    Cambiar foto
-                                                                </span>
+                                                        <span className="text-sm font-medium text-white">
+                                                            Cambiar foto
+                                                        </span>
 
-                                                            </div>
+                                                    </div>
 
-                                                        </>
+                                                </>
 
-                                                    )
-                                                    : (
+                                            ) : (
 
-                                                        <>
+                                                <>
 
-                                                            <span className="text-2xl font-semibold text-gray-500">
+                                                    <span className="text-2xl font-semibold text-gray-500">
 
-                                                                {
-                                                                    selectedUser.first_name.charAt(
-                                                                        0
-                                                                    )
-                                                                }
+                                                        {
+                                                            selectedUser.first_name.charAt(
+                                                                0
+                                                            )
+                                                        }
 
-                                                                {
-                                                                    selectedUser.last_name.charAt(
-                                                                        0
-                                                                    )
-                                                                }
+                                                        {
+                                                            selectedUser.last_name.charAt(
+                                                                0
+                                                            )
+                                                        }
 
-                                                            </span>
+                                                    </span>
 
+                                                </>
 
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
-
-                                                                <span className="text-sm font-medium text-white">
-                                                                    Agregar foto
-                                                                </span>
-
-                                                            </div>
-
-                                                        </>
-
-                                                    )
-                                            }
+                                            )}
 
                                         </label>
 
 
-                                        {/* Selector oculto */}
                                         <input
                                             id="edit-photo"
 
@@ -2232,19 +2498,16 @@ export default function Index({
                                         />
 
 
-                                        {/* Texto para cambiar foto */}
                                         <label
                                             htmlFor="edit-photo"
 
                                             className="mt-2 cursor-pointer text-sm text-gray-500 hover:text-gray-900"
                                         >
 
-                                            {
-                                                editPhotoPreview ||
-                                                selectedUser.photo_path
-                                                    ? 'Cambiar foto'
-                                                    : 'Agregar foto'
-                                            }
+                                            {editPhotoPreview ||
+                                            selectedUser.photo_path
+                                                ? 'Cambiar foto'
+                                                : 'Agregar foto'}
 
                                         </label>
 
@@ -2252,11 +2515,9 @@ export default function Index({
                                         {errors.photo && (
 
                                             <p className="mt-1 text-sm text-red-500">
-
                                                 {
                                                     errors.photo
                                                 }
-
                                             </p>
 
                                         )}
@@ -2264,10 +2525,8 @@ export default function Index({
                                     </div>
 
 
-
                                     {/* Nombre y apellido */}
                                     <div className="grid gap-4 sm:grid-cols-2">
-
 
                                         <div>
 
@@ -2297,11 +2556,9 @@ export default function Index({
                                             {errors.first_name && (
 
                                                 <p className="mt-1 text-sm text-red-500">
-
                                                     {
                                                         errors.first_name
                                                     }
-
                                                 </p>
 
                                             )}
@@ -2337,11 +2594,9 @@ export default function Index({
                                             {errors.last_name && (
 
                                                 <p className="mt-1 text-sm text-red-500">
-
                                                     {
                                                         errors.last_name
                                                     }
-
                                                 </p>
 
                                             )}
@@ -2349,7 +2604,6 @@ export default function Index({
                                         </div>
 
                                     </div>
-
 
 
                                     {/* Correo */}
@@ -2381,11 +2635,9 @@ export default function Index({
                                         {errors.email && (
 
                                             <p className="mt-1 text-sm text-red-500">
-
                                                 {
                                                     errors.email
                                                 }
-
                                             </p>
 
                                         )}
@@ -2393,10 +2645,8 @@ export default function Index({
                                     </div>
 
 
-
                                     {/* Empresa y departamento */}
                                     <div className="grid gap-4 sm:grid-cols-2">
-
 
                                         <div>
 
@@ -2426,24 +2676,25 @@ export default function Index({
 
 
                                                 {companies.map(
-                                                    (company) => (
+                                                    (
+                                                        company
+                                                    ) => (
 
-                                                        <option
-                                                            key={
-                                                                company.id
-                                                            }
+                                                    <option
+                                                        key={
+                                                            company.id
+                                                        }
 
-                                                            value={
-                                                                company.id
-                                                            }
-                                                        >
-                                                            {
-                                                                company.name
-                                                            }
-                                                        </option>
+                                                        value={
+                                                            company.id
+                                                        }
+                                                    >
+                                                        {
+                                                            company.name
+                                                        }
+                                                    </option>
 
-                                                    )
-                                                )}
+                                                ))}
 
                                             </select>
 
@@ -2451,11 +2702,9 @@ export default function Index({
                                             {errors.company_id && (
 
                                                 <p className="mt-1 text-sm text-red-500">
-
                                                     {
                                                         errors.company_id
                                                     }
-
                                                 </p>
 
                                             )}
@@ -2491,24 +2740,25 @@ export default function Index({
 
 
                                                 {departments.map(
-                                                    (department) => (
+                                                    (
+                                                        department
+                                                    ) => (
 
-                                                        <option
-                                                            key={
-                                                                department.id
-                                                            }
+                                                    <option
+                                                        key={
+                                                            department.id
+                                                        }
 
-                                                            value={
-                                                                department.id
-                                                            }
-                                                        >
-                                                            {
-                                                                department.name
-                                                            }
-                                                        </option>
+                                                        value={
+                                                            department.id
+                                                        }
+                                                    >
+                                                        {
+                                                            department.name
+                                                        }
+                                                    </option>
 
-                                                    )
-                                                )}
+                                                ))}
 
                                             </select>
 
@@ -2516,11 +2766,9 @@ export default function Index({
                                             {errors.department_id && (
 
                                                 <p className="mt-1 text-sm text-red-500">
-
                                                     {
                                                         errors.department_id
                                                     }
-
                                                 </p>
 
                                             )}
@@ -2530,12 +2778,50 @@ export default function Index({
                                     </div>
 
 
+                                    {/* Este campo permite modificar el puesto */}
+                                    <div>
 
-                                    {/* Botones de edición */}
+                                        <label className="text-sm font-medium">
+                                            Puesto
+                                        </label>
+
+
+                                        <input
+                                            type="text"
+
+                                            placeholder="Ej. Técnico de Soporte"
+
+                                            value={
+                                                data.position
+                                            }
+
+                                            onChange={(e) =>
+                                                setData(
+                                                    'position',
+                                                    e.target.value
+                                                )
+                                            }
+
+                                            className="mt-1 w-full rounded-md border px-3 py-2"
+                                        />
+
+
+                                        {errors.position && (
+
+                                            <p className="mt-1 text-sm text-red-500">
+                                                {
+                                                    errors.position
+                                                }
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+
                                     <div className="flex justify-end gap-3 border-t pt-5">
 
-
-                                        {/* Cancela los cambios */}
+                                        {/* Este botón cancela los cambios */}
                                         <button
                                             type="button"
 
@@ -2549,7 +2835,7 @@ export default function Index({
                                         </button>
 
 
-                                        {/* Guarda datos y foto nueva */}
+                                        {/* Este botón guarda los cambios */}
                                         <button
                                             type="submit"
 
@@ -2560,11 +2846,9 @@ export default function Index({
                                             className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50"
                                         >
 
-                                            {
-                                                processing
-                                                    ? 'Guardando...'
-                                                    : 'Guardar cambios'
-                                            }
+                                            {processing
+                                                ? 'Guardando...'
+                                                : 'Guardar cambios'}
 
                                         </button>
 
@@ -2579,11 +2863,7 @@ export default function Index({
                     </Dialog>
 
 
-
-                    {/* ===================================== */}
-                    {/* CONFIRMACIÓN DE ELIMINACIÓN */}
-                    {/* ===================================== */}
-
+                    {/* Confirmación antes de eliminar usuario */}
                     <AlertDialog
                         open={
                             showDeleteConfirm
@@ -2636,14 +2916,13 @@ export default function Index({
 
                             <AlertDialogFooter>
 
-
-                                {/* Cierra sin eliminar */}
+                                {/* Este botón cancela la eliminación */}
                                 <AlertDialogCancel>
                                     Cancelar
                                 </AlertDialogCancel>
 
 
-                                {/* Elimina definitivamente */}
+                                {/* Este botón elimina definitivamente el usuario */}
                                 <AlertDialogAction
                                     onClick={
                                         confirmDelete

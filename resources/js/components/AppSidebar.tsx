@@ -1,98 +1,119 @@
-import { Link, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function AppSidebar() {
+
+    // Controla si el menú está abierto o pequeño
+    const [expanded, setExpanded] = useState(true);
+
+    // Obtiene la página actual
     const { url } = usePage();
 
-    const [collapsed, setCollapsed] = useState(false);
 
-    const linkClass = (path: string) => {
-        const active = url.startsWith(path);
-
-        return `
-            flex items-center gap-3 rounded-lg px-4 py-3
-            transition
-            ${
-                active
-                    ? 'bg-black text-white'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-black'
-            }
-        `;
+    // Revisa qué opción del menú está activa
+    const isActive = (path: string) => {
+        return url.startsWith(path);
     };
+
+
+    // Esta función cierra la sesión
+    const logout = () => {
+        router.post('/logout');
+    };
+
 
     return (
         <aside
-            className={`
-                min-h-screen border-r bg-white p-4 transition-all duration-300
-                ${collapsed ? 'w-20' : 'w-64'}
-            `}
+            className={`relative flex min-h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ${
+                expanded ? 'w-64' : 'w-20'
+            }`}
         >
 
-            {/* BOTÓN OCULTAR / MOSTRAR */}
-            <div className="mb-6 flex items-center justify-between">
+            {/* Título del menú */}
+            <div className="flex h-20 items-center justify-center border-b">
 
-                {!collapsed && (
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            Administración
-                        </h2>
-
-                        <p className="text-sm text-gray-500">
-                            Panel de control
-                        </p>
-                    </div>
+                {expanded ? (
+                    <h2 className="text-xl font-bold text-gray-900">
+                        Administración
+                    </h2>
+                ) : (
+                    <span className="text-lg font-bold">
+                        A
+                    </span>
                 )}
-
-                <button
-                    type="button"
-                    onClick={() => setCollapsed(!collapsed)}
-                    className="rounded-md border px-3 py-2 hover:bg-gray-100"
-                    title={collapsed ? 'Mostrar menú' : 'Ocultar menú'}
-                >
-                    {collapsed ? '→' : '←'}
-                </button>
 
             </div>
 
 
-            <nav className="space-y-2">
+            {/* Este botón abre o reduce el menú */}
+            <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                className="absolute -right-3 top-24 flex h-7 w-7 items-center justify-center rounded-full border bg-white text-sm shadow-sm hover:bg-gray-100"
+            >
+                {expanded ? '‹' : '›'}
+            </button>
 
-                <Link
-                    href="/usuarios"
-                    className={linkClass('/usuarios')}
+
+            {/* Opciones del sistema */}
+            <nav className="flex flex-1 flex-col gap-2 p-4">
+
+                {/* Este botón abre Personal */}
+                <button
+                    type="button"
+                    onClick={() => router.visit('/usuarios')}
+                    className={`rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                        isActive('/usuarios')
+                            ? 'bg-black text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
-                    <span></span>
-
-                    {!collapsed && (
-                        <span>Usuarios</span>
-                    )}
-                </Link>
+                    {expanded ? 'Personal' : 'P'}
+                </button>
 
 
-                <Link
-                    href="/empresas"
-                    className={linkClass('/empresas')}
+                {/* Este botón abre Empresas */}
+                <button
+                    type="button"
+                    onClick={() => router.visit('/empresas')}
+                    className={`rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                        isActive('/empresas')
+                            ? 'bg-black text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
-                    <span></span>
-
-                    {!collapsed && (
-                        <span>Empresas</span>
-                    )}
-                </Link>
+                    {expanded ? 'Empresas' : 'E'}
+                </button>
 
 
-                <Link
-                    href="/departamentos"
-                    className={linkClass('/departamentos')}
+                {/* Este botón abre Departamentos */}
+                <button
+                    type="button"
+                    onClick={() => router.visit('/departamentos')}
+                    className={`rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                        isActive('/departamentos')
+                            ? 'bg-black text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
-                    <span></span>
-
-                    {!collapsed && (
-                        <span>Departamentos</span>
-                    )}
-                </Link>
+                    {expanded ? 'Departamentos' : 'D'}
+                </button>
 
             </nav>
+
+
+            {/* Este botón cierra la sesión */}
+            <div className="border-t p-4">
+
+                <button
+                    type="button"
+                    onClick={logout}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+                >
+                    {expanded ? 'Cerrar sesión' : 'Salir'}
+                </button>
+
+            </div>
 
         </aside>
     );

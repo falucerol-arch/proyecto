@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Company;
 use App\Models\Department;
-use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -15,38 +15,40 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
-    // Lista de usuarios, empresas y departamentos
+    // Muestra todos los usuarios junto con empresa y departamento
     public function index(): Response
     {
-        $users = User::with(['company', 'department'])->get();
-
-        $companies = Company::all();
-        $departments = Department::all();
-
         return Inertia::render('Users/Index', [
-            'users' => $users,
-            'companies' => $companies,
-            'departments' => $departments,
+
+            // Obtiene los usuarios con sus relaciones
+            'users' => User::with([
+                'company',
+                'department',
+            ])->get(),
+
+            // Se utilizan para llenar el selector de empresas
+            'companies' => Company::all(),
+
+            // Se utilizan para llenar el selector de departamentos
+            'departments' => Department::all(),
         ]);
     }
 
 
-    // Vista antigua para crear usuario
+    // Muestra la página antigua de crear usuario si todavía se utiliza
     public function create(): Response
     {
-        $companies = Company::all();
-        $departments = Department::all();
-
         return Inertia::render('Users/Create', [
-            'companies' => $companies,
-            'departments' => $departments,
+            'companies' => Company::all(),
+            'departments' => Department::all(),
         ]);
     }
 
 
-    // Registrar usuario
+    // Registra un usuario nuevo
     public function store(Request $request): RedirectResponse
     {
+        // Valida todos los datos recibidos desde React
         $validated = $request->validate([
             'first_name' => [
                 'required',
@@ -63,6 +65,7 @@ class UserController extends Controller
             'email' => [
                 'required',
                 'email',
+                'max:255',
                 'unique:users,email',
             ],
 
@@ -82,6 +85,13 @@ class UserController extends Controller
                 'exists:departments,id',
             ],
 
+            // El puesto pertenece directamente al usuario
+            'position' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
             // La fotografía es opcional
             'photo' => [
                 'nullable',
@@ -92,53 +102,46 @@ class UserController extends Controller
         ]);
 
 
-        // Separamos la foto de los demás datos
-        $photo = $validated['photo'] ?? null;
+        // Guarda temporalmente la fotografía
+        $photo = $request->file('photo');
 
+        // No queremos guardar el archivo directamente en SQLite
         unset($validated['photo']);
 
 
-        // La contraseña siempre se guarda cifrada
+        // La contraseña se guarda cifrada
         $validated['password'] = Hash::make(
             $validated['password']
         );
 
 
-        // Si seleccionó una foto, se almacena en MinIO
+        // Si hay una fotografía la guarda en MinIO
         if ($photo) {
-            $validated['photo_path'] = $photo->store(
-                'usuarios',
-                's3'
-            );
+
+            $validated['photo_path'] =
+                $photo->store(
+                    'usuarios',
+                    's3'
+                );
         }
 
 
+        // Guarda el usuario en SQLite
         User::create($validated);
 
-        return redirect()->route('users.index');
+
+        return redirect()
+            ->route('users.index');
     }
 
 
-    // Vista antigua de edición
-    public function edit(User $user): Response
-    {
-        $companies = Company::all();
-        $departments = Department::all();
-
-        return Inertia::render('Users/Edit', [
-            'user' => $user,
-            'companies' => $companies,
-            'departments' => $departments,
-        ]);
-    }
-
-
-    // Actualizar usuario
+    // Actualiza los datos de un usuario
     public function update(
         Request $request,
         User $user
     ): RedirectResponse {
 
+        // Valida los cambios realizados
         $validated = $request->validate([
             'first_name' => [
                 'required',
@@ -155,8 +158,13 @@ class UserController extends Controller
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')
-                    ->ignore($user->id),
+                'max:255',
+
+                // Permite conservar el correo del usuario actual
+                Rule::unique(
+                    'users',
+                    'email'
+                )->ignore($user->id),
             ],
 
             'company_id' => [
@@ -169,8 +177,13 @@ class UserController extends Controller
                 'exists:departments,id',
             ],
 
-            // Ya dejamos preparado el backend
-            // para cambiar la foto más adelante
+            // Permite cambiar el puesto del usuario
+            'position' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
             'photo' => [
                 'nullable',
                 'image',
@@ -180,71 +193,110 @@ class UserController extends Controller
         ]);
 
 
-        $photo = $validated['photo'] ?? null;
+        // Obtiene la fotografía nueva si existe
+        $photo = $request->file('photo');
 
         unset($validated['photo']);
 
 
-        // Si se envió una foto nueva
+        // Si se seleccionó una foto nueva
         if ($photo) {
 
-            // Elimina la foto anterior de MinIO
-            if ($user->photo_path) {
-                Storage::disk('s3')->delete(
-                    $user->photo_path
+            // Primero guarda la nueva fotografía
+            $newPhotoPath =
+                $photo->store(
+                    'usuarios',
+                    's3'
                 );
+
+
+            // Luego elimina la fotografía anterior de MinIO
+            if ($user->photo_path) {
+
+                Storage::disk('s3')
+                    ->delete(
+                        $user->photo_path
+                    );
             }
 
 
-            // Guarda la nueva fotografía
-            $validated['photo_path'] = $photo->store(
-                'usuarios',
-                's3'
-            );
+            // Guarda la dirección de la fotografía nueva
+            $validated['photo_path'] =
+                $newPhotoPath;
         }
 
 
+        // Actualiza el usuario en SQLite
         $user->update($validated);
 
-        return redirect()->route('users.index');
+
+        return redirect()
+            ->route('users.index');
     }
 
-    // Devuelve la fotografía guardada en MinIO
-public function photo(User $user)
-{
-    if (!$user->photo_path) {
-        abort(404);
-    }
 
-    $disk = Storage::disk('s3');
-
-    if (!$disk->exists($user->photo_path)) {
-        abort(404);
-    }
-
-    return response(
-        $disk->get($user->photo_path),
-        200,
-        [
-            'Content-Type' => $disk->mimeType($user->photo_path),
-        ]
-    );
-}
-
-
-    // Eliminar usuario
-    public function destroy(User $user): RedirectResponse
+    // Entrega la fotografía guardada en MinIO al navegador
+    public function photo(User $user)
     {
-        // Si tiene fotografía, también se elimina de MinIO
-        if ($user->photo_path) {
-            Storage::disk('s3')->delete(
-                $user->photo_path
-            );
+        // Si el usuario no tiene fotografía devuelve 404
+        if (!$user->photo_path) {
+            abort(404);
         }
 
 
+        // Verifica que la fotografía exista en MinIO
+        if (
+            !Storage::disk('s3')
+                ->exists($user->photo_path)
+        ) {
+            abort(404);
+        }
+
+
+        // Obtiene la fotografía
+        $contents =
+            Storage::disk('s3')
+                ->get($user->photo_path);
+
+
+        // Obtiene el tipo de archivo
+        $mimeType =
+            Storage::disk('s3')
+                ->mimeType($user->photo_path)
+            ?? 'image/jpeg';
+
+
+        // Envía la fotografía al navegador
+        return response(
+            $contents,
+            200
+        )->header(
+            'Content-Type',
+            $mimeType
+        );
+    }
+
+
+    // Elimina un usuario
+    public function destroy(
+        User $user
+    ): RedirectResponse {
+
+        // Si tiene fotografía también la elimina de MinIO
+        if ($user->photo_path) {
+
+            Storage::disk('s3')
+                ->delete(
+                    $user->photo_path
+                );
+        }
+
+
+        // Elimina el usuario de SQLite
         $user->delete();
 
-        return redirect()->route('users.index');
+
+        return redirect()
+            ->route('users.index');
     }
 }

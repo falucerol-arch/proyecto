@@ -5,17 +5,19 @@ interface PixelCrop {
     height: number;
 }
 
+// Esta función carga la imagen para poder trabajarla en el navegador
 const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
         const image = new Image();
 
         image.onload = () => resolve(image);
         image.onerror = reject;
+
         image.src = url;
     });
 
 
-// Recorta la parte seleccionada de la fotografía
+// Esta función genera una nueva imagen usando solamente el área seleccionada
 export async function getCroppedImage(
     imageSrc: string,
     crop: PixelCrop
@@ -46,8 +48,10 @@ export async function getCroppedImage(
     );
 
     return new Promise((resolve, reject) => {
+
         canvas.toBlob(
             (blob) => {
+
                 if (blob) {
                     resolve(blob);
                 } else {

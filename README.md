@@ -3,6 +3,7 @@
 Para ejecutar el proyecto es necesario tener instalado:
 
 - PHP 8.4 o superior
+- laravel herd
 - Composer
 - Node.js y npm
 - Git

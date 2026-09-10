@@ -15,6 +15,9 @@ Laravel Herd facilita la instalación y ejecución de PHP y Composer en Windows.
 
 Docker Desktop es necesario para ejecutar MinIO, servicio utilizado para almacenar las fotografías de los usuarios.
 
+Para el acceso al sistema 
+Correo: admin@proyecto.com
+Contraseña: Admin12345
 
 ## Instalación
 

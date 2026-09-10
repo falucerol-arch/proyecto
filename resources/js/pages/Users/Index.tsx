@@ -411,12 +411,38 @@ export default function Index({
                                         className="cursor-pointer transition-colors hover:bg-gray-50"
                                     >
 
-                                        <TableCell className="font-medium text-gray-900">
+                                     <TableCell className="font-medium text-gray-900">
 
-                                            {user.first_name}{' '}
-                                            {user.last_name}
+    <div className="flex items-center gap-3">
 
-                                        </TableCell>
+        {user.photo_path ? (
+
+            <img
+                src={`/usuarios/${user.id}/foto?v=${encodeURIComponent(
+                    user.updated_at
+                )}`}
+                alt={`${user.first_name} ${user.last_name}`}
+                className="h-10 w-10 rounded-full border object-cover"
+            />
+
+        ) : (
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-500">
+
+                {user.first_name.charAt(0)}
+                {user.last_name.charAt(0)}
+
+            </div>
+
+        )}
+
+        <span>
+            {user.first_name} {user.last_name}
+        </span>
+
+    </div>
+
+</TableCell>
 
 
                                         <TableCell className="text-gray-500">

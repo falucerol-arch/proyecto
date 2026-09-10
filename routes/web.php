@@ -45,3 +45,6 @@ Route::patch('/departamentos/{department}', [DepartmentController::class, 'updat
 
 Route::delete('/departamentos/{department}', [DepartmentController::class, 'destroy'])
     ->name('departments.destroy');
+    
+    Route::get('/usuarios/{user}/foto', [UserController::class, 'photo'])
+    ->name('users.photo');

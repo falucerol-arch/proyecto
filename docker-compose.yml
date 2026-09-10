@@ -20,7 +20,7 @@ services:
       /bin/sh -c "
       sleep 3;
       mc alias set myminio http://minio:9000 admin password123;
-      mc mb myminio/usuarios-bucket;
+      mc mb --ignore-existing myminio/usuarios-bucket;
       mc anonymous set public myminio/usuarios-bucket;
       exit 0;
       "

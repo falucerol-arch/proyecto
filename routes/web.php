@@ -2,6 +2,7 @@
 use App\Http\Controllers\CompanyController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController; // <-- ¡Esta es la pieza que faltaba!
+use App\Http\Controllers\DepartmentController;
 
 Route::inertia('/', 'welcome')->name('home');
 Route::get('/usuarios', [UserController::class, 'index'])->name('users.index');
@@ -32,3 +33,15 @@ Route::get('/usuarios/crear', [UserController::class, 'create'])
 
     Route::delete('/empresas/{company}', [CompanyController::class, 'destroy'])
     ->name('companies.destroy');
+
+    Route::get('/departamentos', [DepartmentController::class, 'index'])
+    ->name('departments.index');
+
+Route::post('/departamentos', [DepartmentController::class, 'store'])
+    ->name('departments.store');
+
+Route::patch('/departamentos/{department}', [DepartmentController::class, 'update'])
+    ->name('departments.update');
+
+Route::delete('/departamentos/{department}', [DepartmentController::class, 'destroy'])
+    ->name('departments.destroy');

@@ -1,38 +1,31 @@
+# Requisitos e instalación
+
 ## Requisitos
 
 Para ejecutar el proyecto es necesario tener instalado:
 
 - PHP 8.4 o superior
-- laravel herd
+- Laravel Herd
 - Composer
 - Node.js y npm
 - Git
 - Docker Desktop
 
-Docker Desktop es necesario para iniciar MinIO, servicio utilizado para el almacenamiento de las fotografías.
+Laravel Herd facilita la instalación y ejecución de PHP y Composer en Windows.
+
+Docker Desktop es necesario para ejecutar MinIO, servicio utilizado para almacenar las fotografías de los usuarios.
 
 
 ## Instalación
 
-1. Clonar el repositorio:
+### 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/falucerol-arch/proyecto.git
 
-Descarga el proyecto desde GitHub.
+git clone https://github.com/falucerol-arch/proyecto.git
 cd proyecto
-
-Entra a la carpeta del proyecto descargado.
 composer install
-
-Instala las dependencias necesarias de Laravel/PHP.
-npm install
-
-Instala las dependencias de React, TypeScript, Vite y las demás librerías del frontend.
+npm.cmd install
 .\setup.bat
-
-Prepara automáticamente el proyecto: configuración, base de datos, migraciones y Docker/MinIO.
 .\iniciar.bat
-
-Después se abre:
-http://localhost:8000

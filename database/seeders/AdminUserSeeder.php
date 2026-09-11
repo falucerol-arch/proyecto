@@ -33,6 +33,7 @@ class AdminUserSeeder extends Seeder
                 'password' => Hash::make('Admin12345'),
                 'company_id' => $company->id,
                 'department_id' => $department->id,
+                'position' => 'Administrador',
                 'photo_path' => null,
             ]
         );

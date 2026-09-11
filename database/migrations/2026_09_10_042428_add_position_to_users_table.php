@@ -8,19 +8,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        // Evita el error de columna duplicada si la columna ya existe
+        if (!Schema::hasColumn('users', 'position')) {
 
-            // Esta columna guarda el puesto o cargo del usuario
-            $table->string('position')->nullable();
-        });
+            Schema::table('users', function (Blueprint $table) {
+
+                // Guarda el puesto del usuario
+                $table->string('position')->nullable();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasColumn('users', 'position')) {
 
-            // Elimina la columna si se revierte la migración
-            $table->dropColumn('position');
-        });
+            Schema::table('users', function (Blueprint $table) {
+
+                $table->dropColumn('position');
+            });
+        }
     }
 };

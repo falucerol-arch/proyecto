@@ -8,15 +8,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
-            $table->string('country')->nullable()->after('name');
-        });
+        // Solo agrega country si todavía no existe
+        if (!Schema::hasColumn('companies', 'country')) {
+
+            Schema::table('companies', function (Blueprint $table) {
+
+                $table->string('country')
+                    ->nullable()
+                    ->after('name');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn('country');
-        });
+        if (Schema::hasColumn('companies', 'country')) {
+
+            Schema::table('companies', function (Blueprint $table) {
+
+                $table->dropColumn('country');
+            });
+        }
     }
 };

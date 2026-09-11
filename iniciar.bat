@@ -4,7 +4,6 @@ cd /d "%~dp0"
 
 title Sistema de Administracion de Personal
 
-
 echo.
 echo ==========================================
 echo   Iniciando proyecto
@@ -13,161 +12,108 @@ echo.
 
 
 REM =========================================================
-REM REVISAR SI EL PROYECTO ESTA PREPARADO
+REM PREPARAR / VERIFICAR EL PROYECTO
 REM =========================================================
 
-REM Si falta .env ejecuta setup
-if not exist ".env" goto :prepare
-
-REM Si falta SQLite ejecuta setup
-if not exist "database\database.sqlite" goto :prepare
-
-REM Si faltan dependencias Laravel ejecuta setup
-if not exist "vendor\autoload.php" goto :prepare
-
-REM Si faltan dependencias React ejecuta setup
-if not exist "node_modules" goto :prepare
-
-
-REM Comprueba que exista APP_KEY
-findstr /B /C:"APP_KEY=base64:" ".env" >nul 2>&1
-
-if errorlevel 1 goto :prepare
-
-
-goto :continue
-
-
-
-REM =========================================================
-REM PREPARAR AUTOMATICAMENTE
-REM =========================================================
-
-:prepare
-
-echo Se detecto que el proyecto aun no esta preparado.
+echo Verificando configuracion del proyecto...
+echo.
 
 call "%~dp0setup.bat" --no-pause
 
-if errorlevel 1 goto :error
-
-
-
-REM =========================================================
-REM CONTINUAR
-REM =========================================================
-
-:continue
-
-
-REM Verifica PHP
-where php >nul 2>&1
-
 if errorlevel 1 (
-
-    echo [ERROR] PHP no esta disponible.
-
-    goto :error
-)
-
-
-REM Verifica npm
-where npm.cmd >nul 2>&1
-
-if errorlevel 1 (
-
-    echo [ERROR] npm no esta disponible.
-
+    echo.
+    echo [ERROR] No se pudo preparar el proyecto.
     goto :error
 )
 
 
 REM =========================================================
-REM DOCKER
+REM VERIFICAR BASE DE DATOS
 REM =========================================================
 
-where docker >nul 2>&1
-
-if errorlevel 1 (
-
-    echo [ERROR] Docker no esta instalado o no esta disponible.
-
-    goto :error
-)
-
-
-REM Verifica que Docker Desktop este abierto
-docker info >nul 2>&1
-
-if errorlevel 1 (
-
-    echo [ERROR] Docker Desktop no esta iniciado.
-
-    echo Abre Docker Desktop y vuelve a ejecutar iniciar.bat.
-
-    goto :error
-)
-
-
-REM =========================================================
-REM BASE DE DATOS
-REM =========================================================
-
+echo.
 echo Verificando base de datos...
 
-REM Aplica migraciones nuevas sin eliminar información
 php artisan migrate --force
 
-if errorlevel 1 goto :error
+if errorlevel 1 (
+    echo [ERROR] Fallaron las migraciones.
+    goto :error
+)
 
 
 REM =========================================================
-REM USUARIO DE ACCESO
+REM ASEGURAR USUARIO ADMINISTRADOR
 REM =========================================================
 
-REM Asegura que el administrador siempre exista
+echo.
+echo Verificando usuario de acceso...
+
 php artisan db:seed --force
 
-if errorlevel 1 goto :error
+if errorlevel 1 (
+    echo [ERROR] No se pudo crear el usuario de acceso.
+    goto :error
+)
 
 
 REM =========================================================
-REM MINIO
+REM INICIAR MINIO
 REM =========================================================
 
+echo.
 echo Iniciando almacenamiento de fotografias...
 
 docker compose up -d
 
-if errorlevel 1 goto :error
+if errorlevel 1 (
+    echo [ERROR] No se pudo iniciar Docker / MinIO.
+    goto :error
+)
 
 
 REM =========================================================
-REM LARAVEL
+REM LIMPIAR CONFIGURACION DE LARAVEL
 REM =========================================================
 
+echo.
+echo Actualizando configuracion...
+
+php artisan config:clear
+
+if errorlevel 1 (
+    echo [ERROR] No se pudo limpiar la configuracion.
+    goto :error
+)
+
+
+REM =========================================================
+REM INICIAR LARAVEL
+REM =========================================================
+
+echo.
 echo Iniciando Laravel...
 
-start "Laravel" cmd /k "php artisan serve --host=127.0.0.1 --port=8000"
+start "Laravel" cmd /k "cd /d ""%~dp0"" && php artisan serve --host=127.0.0.1 --port=8000"
 
 
 REM =========================================================
-REM REACT / VITE
+REM INICIAR REACT / VITE
 REM =========================================================
 
 echo Iniciando React...
 
-REM Se usa npm.cmd para evitar el problema de npm.ps1
-start "React - Vite" cmd /k "npm.cmd run dev"
+start "React - Vite" cmd /k "cd /d ""%~dp0"" && npm.cmd run dev"
 
 
 REM =========================================================
-REM ABRIR NAVEGADOR
+REM ESPERAR Y ABRIR NAVEGADOR
 REM =========================================================
 
-REM Espera unos segundos para que Laravel y Vite inicien
-timeout /t 4 /nobreak >nul
+echo.
+echo Esperando a que los servicios inicien...
 
+timeout /t 5 /nobreak >nul
 
 echo Abriendo sistema...
 
@@ -176,23 +122,29 @@ start "" "http://localhost:8000"
 
 echo.
 echo ==========================================
-echo   Proyecto iniciado
+echo   PROYECTO INICIADO CORRECTAMENTE
 echo ==========================================
 echo.
-
+echo Direccion:
+echo http://localhost:8000
+echo.
+echo Usuario:
+echo admin@proyecto.com
+echo.
+echo Contrasena:
+echo Admin12345
+echo.
 
 exit /b 0
 
 
-
-REM =========================================================
-REM ERROR
-REM =========================================================
-
 :error
 
 echo.
-echo No se pudo iniciar el proyecto.
+echo ==========================================
+echo   ERROR AL INICIAR EL PROYECTO
+echo ==========================================
+echo.
 echo Revisa el mensaje mostrado arriba.
 echo.
 

@@ -505,6 +505,33 @@ export default function Index({
     };
 
 
+    // Esta función limpia el formulario antes de abrirlo
+    const openCreateUser = () => {
+
+        createForm.reset();
+
+        createForm.clearErrors();
+
+
+        if (photoPreview) {
+
+            URL.revokeObjectURL(
+                photoPreview
+            );
+        }
+
+
+        setPhotoPreview(
+            null
+        );
+
+
+        setShowCreateUser(
+            true
+        );
+    };
+
+
     // Esta función limpia y cierra el formulario de registro
     const closeCreateUser = () => {
 
@@ -1204,10 +1231,8 @@ export default function Index({
                         <button
                             type="button"
 
-                            onClick={() =>
-                                setShowCreateUser(
-                                    true
-                                )
+                            onClick={
+                                openCreateUser
                             }
 
                             className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
@@ -1680,6 +1705,8 @@ export default function Index({
                                     submitCreateUser
                                 }
 
+                                autoComplete="off"
+
                                 className="space-y-5"
                             >
 
@@ -1860,6 +1887,12 @@ export default function Index({
                                     <input
                                         type="email"
 
+                                        name="new-user-email"
+
+                                        autoComplete="off"
+
+                                        placeholder="correo@empresa.com"
+
                                         value={
                                             createForm.data.email
                                         }
@@ -1900,6 +1933,12 @@ export default function Index({
 
                                     <input
                                         type="password"
+
+                                        name="new-user-password"
+
+                                        autoComplete="new-password"
+
+                                        placeholder="Contraseña"
 
                                         value={
                                             createForm.data.password

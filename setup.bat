@@ -12,78 +12,102 @@ echo.
 
 
 REM =========================================================
-REM VERIFICAR PROGRAMAS NECESARIOS
+REM VERIFICAR PHP
 REM =========================================================
 
-REM Verifica PHP
 where php >nul 2>&1
 
 if errorlevel 1 (
+    echo.
     echo [ERROR] PHP no esta disponible.
-    echo Instala Laravel Herd o PHP 8.3+ y vuelve a ejecutar este archivo.
+    echo Instala Laravel Herd y vuelve a intentarlo.
     goto :error
 )
 
-
-REM Verifica Composer
-where composer >nul 2>&1
-
-if errorlevel 1 (
-    echo [ERROR] Composer no esta disponible.
-    echo Instala Composer o Laravel Herd y vuelve a ejecutar este archivo.
-    goto :error
-)
-
-
-REM Verifica Node
-where node >nul 2>&1
-
-if errorlevel 1 (
-    echo [ERROR] Node.js no esta disponible.
-    echo Instala Node.js y vuelve a ejecutar este archivo.
-    goto :error
-)
-
-
-REM Verifica npm.
-REM Se utiliza npm.cmd para evitar el bloqueo de npm.ps1 en PowerShell
-where npm.cmd >nul 2>&1
-
-if errorlevel 1 (
-    echo [ERROR] npm no esta disponible.
-    echo Instala Node.js y vuelve a ejecutar este archivo.
-    goto :error
-)
-
-
-REM Verifica Docker
-where docker >nul 2>&1
-
-if errorlevel 1 (
-    echo [ERROR] Docker no esta disponible.
-    echo Instala Docker Desktop y vuelve a ejecutar este archivo.
-    goto :error
-)
+echo [OK] PHP encontrado.
 
 
 REM =========================================================
-REM COMPROBAR QUE DOCKER DESKTOP ESTE INICIADO
+REM VERIFICAR COMPOSER
+REM =========================================================
+
+where composer >nul 2>&1
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Composer no esta disponible.
+    echo Instala Composer o Laravel Herd.
+    goto :error
+)
+
+echo [OK] Composer encontrado.
+
+
+REM =========================================================
+REM VERIFICAR NODE
+REM =========================================================
+
+where node >nul 2>&1
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Node.js no esta disponible.
+    goto :error
+)
+
+echo [OK] Node.js encontrado.
+
+
+REM =========================================================
+REM VERIFICAR NPM
+REM =========================================================
+
+where npm.cmd >nul 2>&1
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] npm no esta disponible.
+    goto :error
+)
+
+echo [OK] npm encontrado.
+
+
+REM =========================================================
+REM VERIFICAR DOCKER
+REM =========================================================
+
+where docker >nul 2>&1
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Docker no esta disponible.
+    goto :error
+)
+
+echo [OK] Docker encontrado.
+
+
+REM =========================================================
+REM VERIFICAR DOCKER DESKTOP
 REM =========================================================
 
 docker info >nul 2>&1
 
 if errorlevel 1 (
-    echo [ERROR] Docker Desktop esta instalado, pero no esta iniciado.
-    echo Abre Docker Desktop, espera a que termine de iniciar y vuelve a intentarlo.
+    echo.
+    echo [ERROR] Docker Desktop esta instalado pero no esta iniciado.
+    echo Abre Docker Desktop y espera unos segundos.
     goto :error
 )
 
+echo [OK] Docker Desktop iniciado.
+
 
 REM =========================================================
-REM DEPENDENCIAS DE LARAVEL
+REM INSTALAR DEPENDENCIAS PHP
 REM =========================================================
 
-REM Si vendor no existe instala Composer automáticamente
 if not exist "vendor\autoload.php" (
 
     echo.
@@ -95,15 +119,14 @@ if not exist "vendor\autoload.php" (
 
 ) else (
 
-    echo Dependencias de Laravel listas.
+    echo [OK] Dependencias Laravel instaladas.
 )
 
 
 REM =========================================================
-REM DEPENDENCIAS DE REACT
+REM INSTALAR DEPENDENCIAS FRONTEND
 REM =========================================================
 
-REM Si node_modules no existe instala las dependencias
 if not exist "node_modules" (
 
     echo.
@@ -115,7 +138,7 @@ if not exist "node_modules" (
 
 ) else (
 
-    echo Dependencias de React listas.
+    echo [OK] Dependencias React instaladas.
 )
 
 
@@ -123,7 +146,6 @@ REM =========================================================
 REM CREAR .ENV
 REM =========================================================
 
-REM Si .env no existe lo copia desde .env.example
 if not exist ".env" (
 
     echo.
@@ -131,23 +153,54 @@ if not exist ".env" (
 
     copy /Y ".env.example" ".env" >nul
 
+    if errorlevel 1 goto :error
+
 ) else (
 
-    echo El archivo .env ya existe.
+    echo [OK] Archivo .env existente.
 )
 
 
 REM =========================================================
-REM APP_KEY
+REM FORZAR CONFIGURACION SEGURA PARA INSTALACION LOCAL
 REM =========================================================
 
-REM Revisa si Laravel ya tiene una APP_KEY
+echo.
+echo Configurando sesiones y cache local...
+
+powershell -NoProfile -Command ^
+"(Get-Content '.env') ^
+-replace '^SESSION_DRIVER=.*','SESSION_DRIVER=file' ^
+-replace '^CACHE_STORE=.*','CACHE_STORE=file' ^
+-replace '^QUEUE_CONNECTION=.*','QUEUE_CONNECTION=sync' ^
+| Set-Content '.env'"
+
+if errorlevel 1 goto :error
+
+
+REM =========================================================
+REM LIMPIAR SOLO CONFIGURACION ANTERIOR
+REM =========================================================
+
+REM IMPORTANTE:
+REM Aqui NO usamos optimize:clear porque todavia no
+REM sabemos si existen las tablas de la base de datos.
+
+php artisan config:clear
+
+if errorlevel 1 goto :error
+
+
+REM =========================================================
+REM GENERAR APP_KEY
+REM =========================================================
+
 findstr /B /C:"APP_KEY=base64:" ".env" >nul 2>&1
 
 if errorlevel 1 (
 
     echo.
-    echo Generando clave de Laravel...
+    echo Generando APP_KEY...
 
     php artisan key:generate --force
 
@@ -155,15 +208,14 @@ if errorlevel 1 (
 
 ) else (
 
-    echo La clave de Laravel ya existe.
+    echo [OK] APP_KEY existente.
 )
 
 
 REM =========================================================
-REM SQLITE
+REM CREAR SQLITE
 REM =========================================================
 
-REM Si la base de datos no existe la crea automáticamente
 if not exist "database\database.sqlite" (
 
     echo.
@@ -173,13 +225,42 @@ if not exist "database\database.sqlite" (
 
 ) else (
 
-    echo La base de datos SQLite ya existe.
+    echo [OK] Base de datos SQLite existente.
 )
 
 
 REM =========================================================
-REM LIMPIAR CACHE
+REM EJECUTAR MIGRACIONES
 REM =========================================================
+
+echo.
+echo Ejecutando migraciones...
+
+php artisan migrate --force
+
+if errorlevel 1 goto :error
+
+
+REM =========================================================
+REM CREAR USUARIO ADMINISTRADOR
+REM =========================================================
+
+echo.
+echo Creando usuario de acceso...
+
+php artisan db:seed --force
+
+if errorlevel 1 goto :error
+
+
+REM =========================================================
+REM AHORA SI LIMPIAR CACHE
+REM =========================================================
+
+REM Ya existe la base de datos y las migraciones terminaron.
+
+echo.
+echo Limpiando cache de Laravel...
 
 php artisan optimize:clear
 
@@ -187,63 +268,37 @@ if errorlevel 1 goto :error
 
 
 REM =========================================================
-REM MIGRACIONES
+REM INICIAR MINIO
 REM =========================================================
 
 echo.
-echo Preparando base de datos...
-
-REM Crea o actualiza las tablas sin borrar información
-php artisan migrate --force
-
-if errorlevel 1 goto :error
-
-
-REM =========================================================
-REM USUARIO DE ACCESO
-REM =========================================================
-
-echo.
-echo Preparando usuario de acceso...
-
-REM Ejecuta el seeder
-php artisan db:seed --force
-
-if errorlevel 1 goto :error
-
-
-REM =========================================================
-REM DOCKER Y MINIO
-REM =========================================================
-
-echo.
-echo Iniciando Docker y MinIO...
+echo Iniciando MinIO...
 
 docker compose up -d
 
 if errorlevel 1 goto :error
 
 
-echo.
-echo ========================================
-echo   Proyecto preparado correctamente
-echo ========================================
-echo.
+REM =========================================================
+REM FINAL
+REM =========================================================
 
+echo.
+echo ========================================
+echo   PROYECTO PREPARADO CORRECTAMENTE
+echo ========================================
+echo.
 echo Usuario de acceso:
 echo.
-
 echo Correo: admin@proyecto.com
 echo Contrasena: Admin12345
-
+echo.
+echo Ahora ejecuta:
+echo.
+echo iniciar.bat
 echo.
 
-echo Ahora puedes ejecutar iniciar.bat
 
-echo.
-
-
-REM Si fue llamado desde iniciar.bat no hace pausa
 if /I "%~1"=="--no-pause" goto :success
 
 pause
@@ -258,11 +313,10 @@ exit /b 0
 
 echo.
 echo ========================================
-echo   No se pudo preparar el proyecto
+echo   ERROR AL PREPARAR EL PROYECTO
 echo ========================================
-
-echo Revisa el mensaje de error mostrado arriba.
-
+echo.
+echo Revisa el mensaje mostrado arriba.
 echo.
 
 if /I not "%~1"=="--no-pause" pause
